@@ -24,18 +24,11 @@
     else localStorage.removeItem(SUBTENANT_KEY);
   }
 
-  function authHeaders(extra) {
-    var session = window.AkutAuth.getSession();
+  function buildHeaders(idToken, extra) {
     var headers = Object.assign({}, extra || {});
-    if (session && session.idToken) {
-      headers["Authorization"] = "Bearer " + session.idToken;
-    }
-    // Scope the request to the selected sub-tenant (one of the values from the
-    // token's custom:subtenants claim) when one has been chosen.
+    if (idToken) headers["Authorization"] = "Bearer " + idToken;
     var sub = getSubTenant();
-    if (sub) {
-      headers["sub-tenant"] = sub;
-    }
+    if (sub) headers["sub-tenant"] = sub;
     return headers;
   }
 
@@ -43,33 +36,58 @@
     return (cfg().apiBaseUrl || "").replace(/\/$/, "") + path;
   }
 
-  // Centralised fetch with auth + error normalisation.
-  function request(path, options) {
-    options = options || {};
+  function handleResponse(res) {
+    if (res.status === 403) {
+      return res.text().then(function (t) {
+        var err = new Error("You are not allowed to perform this action." + (t ? (" " + t) : ""));
+        err.status = 403;
+        throw err;
+      });
+    }
+    if (!res.ok) {
+      return res.text().then(function (t) {
+        var err = new Error("Request failed (" + res.status + "): " + (t || res.statusText));
+        err.status = res.status;
+        throw err;
+      });
+    }
+    return res;
+  }
+
+  function fetchWithToken(idToken, path, options) {
     return fetch(url(path), {
       method: options.method || "GET",
-      headers: authHeaders(options.headers),
+      headers: buildHeaders(idToken, options.headers),
       body: options.body
-    }).then(function (res) {
-      if (res.status === 401 || res.status === 403) {
-        return res.text().then(function (t) {
-          var err = new Error(
-            res.status === 401
-              ? "Your session is not authorized. Please sign in again."
-              : "You are not allowed to perform this action." + (t ? (" " + t) : "")
-          );
-          err.status = res.status;
-          throw err;
+    });
+  }
+
+  // Centralised fetch: proactively refreshes an expired token before the
+  // request, and retries once if the server still returns 401 (e.g. clock skew
+  // or a race). After a failed retry the session is cleared and the user is
+  // redirected to login.
+  function request(path, options) {
+    options = options || {};
+    return window.AkutAuth.getValidToken().then(function (idToken) {
+      return fetchWithToken(idToken, path, options).then(function (res) {
+        if (res.status !== 401) return handleResponse(res);
+        // One retry after a fresh refresh.
+        return window.AkutAuth.refresh().then(function (newSession) {
+          return fetchWithToken(newSession.idToken, path, options);
+        }).then(function (res2) {
+          if (res2.status === 401) {
+            window.AkutAuth.logout();
+            throw new Error("Your session has expired. Please sign in again.");
+          }
+          return handleResponse(res2);
         });
+      });
+    }).catch(function (err) {
+      // getValidToken rejects when there is no refresh token left.
+      if (!window.AkutAuth.getSession()) {
+        window.AkutAuth.logout();
       }
-      if (!res.ok) {
-        return res.text().then(function (t) {
-          var err = new Error("Request failed (" + res.status + "): " + (t || res.statusText));
-          err.status = res.status;
-          throw err;
-        });
-      }
-      return res;
+      throw err;
     });
   }
 

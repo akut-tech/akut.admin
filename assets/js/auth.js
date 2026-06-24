@@ -103,6 +103,73 @@
     return !!(s && s.idToken && !isExpired(s.idToken));
   }
 
+  // ---- Cognito token refresh ----------------------------------------------
+
+  var _refreshPromise = null;
+
+  function refresh() {
+    // Deduplicate concurrent refresh calls — only one flight at a time.
+    if (_refreshPromise) return _refreshPromise;
+
+    var s = getSession();
+    if (!s || !s.refreshToken) {
+      return Promise.reject(new Error("No refresh token available."));
+    }
+
+    var c = cfg();
+    var endpoint = "https://cognito-idp." + c.cognito.region + ".amazonaws.com/";
+    _refreshPromise = fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSCognitoIdentityProviderService.InitiateAuth"
+      },
+      body: JSON.stringify({
+        AuthFlow: "REFRESH_TOKEN_AUTH",
+        ClientId: c.cognito.clientId,
+        AuthParameters: { REFRESH_TOKEN: s.refreshToken }
+      })
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        if (!res.ok) {
+          var msg = (data && (data.message || data.__type)) || ("Token refresh failed (" + res.status + ")");
+          throw new Error(msg);
+        }
+        var auth = data.AuthenticationResult;
+        if (!auth || !auth.IdToken) {
+          throw new Error("Cognito did not return a new ID token.");
+        }
+        // Cognito does not return a new RefreshToken on refresh — keep the old one.
+        saveSession({
+          idToken: auth.IdToken,
+          accessToken: auth.AccessToken,
+          refreshToken: s.refreshToken,
+          expiresIn: auth.ExpiresIn,
+          obtainedAt: Date.now()
+        });
+        return getSession();
+      });
+    }).finally(function () {
+      _refreshPromise = null;
+    });
+
+    return _refreshPromise;
+  }
+
+  // Returns a promise that resolves to a valid idToken, refreshing if needed.
+  // Rejects (and clears the session) if the refresh token is also expired.
+  function getValidToken() {
+    var s = getSession();
+    if (!s || !s.idToken) return Promise.reject(new Error("Not signed in."));
+    if (!isExpired(s.idToken)) return Promise.resolve(s.idToken);
+    return refresh().then(function (newSession) {
+      return newSession.idToken;
+    }).catch(function (err) {
+      clearSession();
+      throw err;
+    });
+  }
+
   // ---- Cognito sign-in ----------------------------------------------------
 
   function login(username, password) {
@@ -173,8 +240,12 @@
   // ---- Page guards --------------------------------------------------------
 
   // Call from protected pages: bounce to /login if not authenticated.
+  // A page with an expired ID token but a live refresh token is still usable —
+  // the first API call will refresh transparently, so we only redirect when
+  // there is no session at all.
   function requireAuth() {
-    if (!isAuthenticated()) {
+    var s = getSession();
+    if (!s || !s.idToken) {
       clearSession();
       var here = window.location.pathname + window.location.search;
       window.location.replace(loginUrl() + "?next=" + encodeURIComponent(here));
@@ -209,6 +280,8 @@
   window.AkutAuth = {
     login: login,
     logout: logout,
+    refresh: refresh,
+    getValidToken: getValidToken,
     getSession: getSession,
     claims: claims,
     groups: groups,
