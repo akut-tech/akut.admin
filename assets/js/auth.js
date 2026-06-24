@@ -199,7 +199,7 @@
     if (!c) return;
     var name = [c.given_name, c.family_name].filter(Boolean).join(" ") ||
       c["cognito:username"] || c.email || "Signed in";
-    var tenant = c["custom:tenant"];
+    var tenant = (window.AkutApi && window.AkutApi.getSubTenant()) || c["custom:tenant"];
     var role = isAdmin() ? "Admin" : "Customer";
     var meta = [role, tenant ? ("· " + tenant) : ""].filter(Boolean).join(" ");
     if (nameEl) nameEl.textContent = name;

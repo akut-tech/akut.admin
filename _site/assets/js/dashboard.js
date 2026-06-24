@@ -42,6 +42,7 @@
       document.getElementById("subTenantSave").addEventListener("click", function () {
         AkutApi.setSubTenant(select.value);
         set("ctxTenant", select.value);
+        AkutAuth.renderUserCard();
         var saved = document.getElementById("subTenantSaved");
         saved.hidden = false;
         setTimeout(function () { saved.hidden = true; }, 1800);

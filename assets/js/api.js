@@ -99,7 +99,7 @@
   // status: "Enabled" | "Disabled"
   function setTenantStatus(status) {
     return request(cfg().tenantPath, {
-      method: "PUT",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: status })
     }).then(function () { return true; });
