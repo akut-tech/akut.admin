@@ -82,6 +82,22 @@
     return groups().indexOf("admin") !== -1;
   }
 
+  // custom:subtenants is a comma-separated string in the raw token, e.g.
+  // "akut,test". Returns the trimmed, de-duplicated list of sub-tenants the
+  // signed-in user is allowed to target.
+  function subTenants() {
+    var c = claims();
+    if (!c || !c["custom:subtenants"]) return [];
+    var seen = {};
+    return String(c["custom:subtenants"]).split(",")
+      .map(function (s) { return s.trim(); })
+      .filter(function (s) {
+        if (!s || seen[s]) return false;
+        seen[s] = true;
+        return true;
+      });
+  }
+
   function isAuthenticated() {
     var s = getSession();
     return !!(s && s.idToken && !isExpired(s.idToken));
@@ -197,6 +213,7 @@
     claims: claims,
     groups: groups,
     isAdmin: isAdmin,
+    subTenants: subTenants,
     isAuthenticated: isAuthenticated,
     requireAuth: requireAuth,
     redirectIfAuthed: redirectIfAuthed,

@@ -79,10 +79,11 @@
     <hr class="divider">
     <label class="field">
       <span class="field-label">Target sub-tenant</span>
-      <p class="field-help">Your admin account has no tenant claim, so requests
-        are scoped by this value (sent as the <code>sub-tenant</code> header).</p>
+      <p class="field-help">Choose which sub-tenant your requests apply to. The
+        options come from your account's <code>custom:subtenants</code> claim and
+        the selection is sent as the <code>sub-tenant</code> header.</p>
       <div class="inline-controls">
-        <input type="text" id="subTenantInput" placeholder="tenant-id">
+        <select id="subTenantSelect"></select>
         <button type="button" class="btn btn-secondary" id="subTenantSave">Save</button>
       </div>
       <span class="field-saved" id="subTenantSaved" hidden>Saved ✓</span>

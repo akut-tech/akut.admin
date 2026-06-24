@@ -25,7 +25,7 @@ exclude:
 akut:
   # Base URL of the deployed API Gateway (HTTP API v2) that fronts lambda.akut.
   # Example: https://abc123.execute-api.eu-west-1.amazonaws.com
-  api_base_url: "https://REPLACE-WITH-YOUR-API-ID.execute-api.eu-west-1.amazonaws.com"
+  api_base_url: "https://zk5hanxapf.execute-api.eu-west-1.amazonaws.com"
 
   # Route paths mapped to the Menu/Tenant lambda handlers.
   menu_path: "/menu"

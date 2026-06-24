@@ -5,8 +5,8 @@
  *   PUT  {menuPath}    body = Menu JSON    -> 204
  *   PUT  {tenantPath}  body = {status}     -> 204   (admin-only operation)
  *
- * Auth: Bearer <idToken>. Admin users whose token has no `custom:tenant`
- * claim must identify the target tenant via the `sub-tenant` header. */
+ * Auth: Bearer <idToken>. The target sub-tenant (chosen from the token's
+ * `custom:subtenants` claim) is sent via the `sub-tenant` header. */
 (function () {
   "use strict";
 
@@ -30,11 +30,10 @@
     if (session && session.idToken) {
       headers["Authorization"] = "Bearer " + session.idToken;
     }
-    // An admin token without a tenant claim needs the sub-tenant header.
-    var claims = window.AkutAuth.claims();
-    var needsSubTenant = claims && !claims["custom:tenant"] && window.AkutAuth.isAdmin();
+    // Scope the request to the selected sub-tenant (one of the values from the
+    // token's custom:subtenants claim) when one has been chosen.
     var sub = getSubTenant();
-    if (sub && (needsSubTenant || sub)) {
+    if (sub) {
       headers["sub-tenant"] = sub;
     }
     return headers;

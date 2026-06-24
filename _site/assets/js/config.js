@@ -1,6 +1,6 @@
 // Global runtime configuration for the Akut Admin console.
 window.AKUT_CONFIG = {
-  apiBaseUrl: "https://REPLACE-WITH-YOUR-API-ID.execute-api.eu-west-1.amazonaws.com",
+  apiBaseUrl: "https://zk5hanxapf.execute-api.eu-west-1.amazonaws.com",
   menuPath: "/menu",
   tenantPath: "/tenant",
   cognito: {
