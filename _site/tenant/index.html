@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Tenant · Akut Admin</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+<link rel="stylesheet" href="/assets/css/style.css">
+<!-- App config is generated from _config.yml -> assets/js/config.js -->
+<script src="/assets/js/config.js"></script>
+<script src="/assets/js/auth.js"></script>
+
+</head>
+<body class="layout-app" data-page="tenant">
+  <aside class="sidebar">
+  <div class="brand">
+    <span class="brand-mark">🍽️</span>
+    <span class="brand-name">Akut Admin</span>
+  </div>
+  <nav class="nav">
+    <a class="nav-link" href="/" data-nav="dashboard">Dashboard</a>
+    <a class="nav-link" href="/menu/" data-nav="menu">Menu</a>
+    <a class="nav-link" href="/tenant/" data-nav="tenant">Tenant</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-name" id="navUserName">—</div>
+      <div class="user-meta" id="navUserMeta">—</div>
+    </div>
+    <button type="button" class="btn btn-ghost btn-block" onclick="AkutAuth.logout()">Sign out</button>
+  </div>
+</aside>
+<script>
+  (function () {
+    // Highlight the active link based on the current page key.
+    var key = document.body.getAttribute('data-page');
+    if (key) {
+      var active = document.querySelector('.nav-link[data-nav="' + key + '"]');
+      if (active) active.classList.add('is-active');
+    }
+    // Populate the user card from the stored ID token.
+    document.addEventListener('DOMContentLoaded', AkutAuth.renderUserCard);
+  })();
+</script>
+
+  <main class="app-main">
+    <header class="page-header">
+      <h1>Tenant</h1>
+      <p class="page-sub">Enable or disable this tenant</p>
+    </header>
+    <div class="page-body">
+      <section class="card">
+  <div class="status-row">
+    <div>
+      <h2>Tenant status</h2>
+      <p class="muted">Disabling a tenant hides its menu from customers. This is
+        an admin operation.</p>
+    </div>
+    <span class="badge" id="tenantBadge">—</span>
+  </div>
+
+  <div id="tenantAlert" class="alert" hidden></div>
+
+  <div class="status-actions">
+    <button type="button" class="btn btn-success" id="enableBtn">Enable tenant</button>
+    <button type="button" class="btn btn-danger" id="disableBtn">Disable tenant</button>
+  </div>
+
+  <p class="field-help">Note: the API does not return the current tenant status,
+    so the badge reflects your most recent action in this session.</p>
+</section>
+
+    </div>
+  </main>
+  <!-- Guard: redirect to login if there is no valid session -->
+  <script>AkutAuth.requireAuth();</script>
+  
+    
+      <script src="/assets/js/api.js"></script>
+    
+      <script src="/assets/js/tenant.js"></script>
+    
+  
+</body>
+</html>

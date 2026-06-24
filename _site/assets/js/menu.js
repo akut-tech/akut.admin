@@ -1,0 +1,669 @@
+/* Menu editor: loads a menu (Active or Draft) from the API, renders a
+ * form-based editor over the akut.domain Menu shape, and saves it back via
+ * PUT. A raw-JSON tab mirrors the same state for power users.
+ *
+ * Property casing is PascalCase to match the lambda's Newtonsoft (de)serialization.
+ * Translations are objects keyed by Language *name* (e.g. "English"); other
+ * enums are stored as their integer values. */
+(function () {
+  "use strict";
+
+  var E = window.AKUT_ENUMS;
+  var LANGUAGES = Object.keys(E.language).map(function (k) {
+    return { value: Number(k), name: E.language[k] };
+  });
+
+  var state = {
+    status: "Active",   // which menu we loaded (Active|Draft)
+    menu: null,         // the working Menu object (source of truth)
+    view: "form"        // "form" | "json"
+  };
+
+  // ---- DOM refs -----------------------------------------------------------
+  var refs = {};
+  document.addEventListener("DOMContentLoaded", function () {
+    [
+      "statusSelect", "loadBtn", "newBtn", "formTab", "jsonTab",
+      "saveDraftBtn", "publishBtn", "menuAlert", "loadingState", "emptyState",
+      "editorRoot", "jsonRoot", "jsonArea", "jsonApply", "jsonStatus"
+    ].forEach(function (id) { refs[id] = document.getElementById(id); });
+
+    refs.loadBtn.addEventListener("click", load);
+    refs.newBtn.addEventListener("click", newMenu);
+    refs.saveDraftBtn.addEventListener("click", function () { save("Draft"); });
+    refs.publishBtn.addEventListener("click", function () { save("Active"); });
+    refs.formTab.addEventListener("click", function () { switchView("form"); });
+    refs.jsonTab.addEventListener("click", function () { switchView("json"); });
+    refs.jsonApply.addEventListener("click", applyJson);
+
+    load();
+  });
+
+  // ---- Tiny DOM helper ----------------------------------------------------
+  function h(tag, props, children) {
+    var node = document.createElement(tag);
+    if (props) {
+      Object.keys(props).forEach(function (k) {
+        if (k === "class") node.className = props[k];
+        else if (k === "html") node.innerHTML = props[k];
+        else if (k.slice(0, 2) === "on" && typeof props[k] === "function") {
+          node.addEventListener(k.slice(2).toLowerCase(), props[k]);
+        } else if (props[k] === true) node.setAttribute(k, "");
+        else if (props[k] !== false && props[k] != null) node.setAttribute(k, props[k]);
+      });
+    }
+    (children || []).forEach(function (c) {
+      if (c == null) return;
+      node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    });
+    return node;
+  }
+
+  function uuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+      var r = (Math.random() * 16) | 0, v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  // ---- Alerts -------------------------------------------------------------
+  function alert(kind, message) {
+    refs.menuAlert.className = "alert alert-" + kind;
+    refs.menuAlert.textContent = message;
+    refs.menuAlert.hidden = false;
+  }
+  function clearAlert() { refs.menuAlert.hidden = true; }
+
+  // ---- Load / new ---------------------------------------------------------
+  function load() {
+    clearAlert();
+    state.status = refs.statusSelect.value;
+    showOnly("loading");
+    AkutApi.getMenu(state.status)
+      .then(function (menu) {
+        if (!menu) {
+          state.menu = null;
+          showOnly("empty");
+          return;
+        }
+        state.menu = normalize(menu);
+        render();
+      })
+      .catch(function (err) {
+        showOnly("empty");
+        alert("error", err.message || "Failed to load menu.");
+      });
+  }
+
+  function newMenu() {
+    clearAlert();
+    state.status = refs.statusSelect.value;
+    state.menu = {
+      Id: uuid(),
+      Logo: null,
+      Name: {},
+      Description: null,
+      Notes: null,
+      TemplateId: "",
+      DefaultLanguage: 2,
+      Currency: 1,
+      Categories: [],
+      Status: state.status === "Draft" ? 2 : 1
+    };
+    render();
+  }
+
+  // Ensure arrays/objects exist and Translations are plain objects.
+  function normalize(menu) {
+    menu.Name = menu.Name || {};
+    menu.Categories = menu.Categories || [];
+    menu.Categories.forEach(function (cat) {
+      cat.Name = cat.Name || {};
+      cat.Items = cat.Items || [];
+    });
+    return menu;
+  }
+
+  function showOnly(which) {
+    refs.loadingState.hidden = which !== "loading";
+    refs.emptyState.hidden = which !== "empty";
+    var hasEditor = which === "editor";
+    refs.editorRoot.hidden = !(hasEditor && state.view === "form");
+    refs.jsonRoot.hidden = !(hasEditor && state.view === "json");
+  }
+
+  // ---- View switching -----------------------------------------------------
+  function switchView(view) {
+    if (!state.menu) return;
+    state.view = view;
+    refs.formTab.classList.toggle("is-active", view === "form");
+    refs.jsonTab.classList.toggle("is-active", view === "json");
+    if (view === "json") {
+      refs.jsonArea.value = JSON.stringify(sanitize(state.menu), null, 2);
+      refs.jsonStatus.textContent = "";
+    }
+    showOnly("editor");
+  }
+
+  function applyJson() {
+    try {
+      var parsed = JSON.parse(refs.jsonArea.value);
+      state.menu = normalize(parsed);
+      refs.jsonStatus.textContent = "Applied ✓";
+      refs.jsonStatus.className = "field-saved";
+    } catch (e) {
+      refs.jsonStatus.textContent = "Invalid JSON: " + e.message;
+      refs.jsonStatus.className = "field-saved field-error";
+    }
+  }
+
+  function render() {
+    if (state.view === "form") renderForm();
+    showOnly("editor");
+  }
+
+  // ---- Form rendering -----------------------------------------------------
+  function renderForm() {
+    var m = state.menu;
+    var root = refs.editorRoot;
+    root.innerHTML = "";
+
+    // --- Menu details ---
+    root.appendChild(card("Menu details", [
+      grid2([
+        textField("Template ID", m.TemplateId, function (v) { m.TemplateId = v; },
+          { required: true, placeholder: "e.g. classic-01" }),
+        selectField("Default language", m.DefaultLanguage, E.language, function (v) {
+          m.DefaultLanguage = Number(v);
+        })
+      ]),
+      grid2([
+        selectField("Currency", m.Currency, E.currency, function (v) { m.Currency = Number(v); }),
+        textField("Notes (internal)", m.Notes || "", function (v) { m.Notes = v || null; })
+      ]),
+      translationsField("Name", m.Name, function (t) { m.Name = t; }),
+      translationsField("Description", m.Description || {}, function (t) {
+        m.Description = isEmptyTranslations(t) ? null : t;
+      }),
+      imageField("Logo", m.Logo, function (img) { m.Logo = img; })
+    ]));
+
+    // --- Categories ---
+    var catsWrap = h("div", { class: "section" }, [
+      sectionHeader("Categories", "Add category", function () {
+        m.Categories.push(newCategory(m.Categories.length));
+        renderForm();
+      })
+    ]);
+
+    if (!m.Categories.length) {
+      catsWrap.appendChild(h("p", { class: "muted pad" }, ["No categories yet."]));
+    }
+    m.Categories.forEach(function (cat, ci) {
+      catsWrap.appendChild(renderCategory(cat, ci));
+    });
+    root.appendChild(catsWrap);
+  }
+
+  function renderCategory(cat, ci) {
+    var m = state.menu;
+    var body = h("div", { class: "accordion-body" }, [
+      grid2([
+        numberField("Order", cat.Order, function (v) { cat.Order = intOr(v, 0); }),
+        null
+      ]),
+      translationsField("Name", cat.Name, function (t) { cat.Name = t; }),
+      translationsField("Description", cat.Description || {}, function (t) {
+        cat.Description = isEmptyTranslations(t) ? null : t;
+      }),
+      imageField("Category image", cat.Image, function (img) { cat.Image = img; }),
+      itemsBlock(cat, ci)
+    ]);
+
+    return accordion(
+      "Category " + (ci + 1) + nameHint(cat.Name),
+      [
+        iconButton("↑", "Move up", function () { move(m.Categories, ci, -1); renderForm(); }),
+        iconButton("↓", "Move down", function () { move(m.Categories, ci, 1); renderForm(); }),
+        iconButton("✕", "Remove category", function () {
+          if (confirm("Remove this category and its items?")) {
+            m.Categories.splice(ci, 1); renderForm();
+          }
+        })
+      ],
+      body
+    );
+  }
+
+  function itemsBlock(cat, ci) {
+    var wrap = h("div", { class: "subsection" }, [
+      sectionHeader("Items", "Add item", function () {
+        cat.Items.push(newItem(cat.Items.length));
+        renderForm();
+      }, true)
+    ]);
+    if (!cat.Items.length) {
+      wrap.appendChild(h("p", { class: "muted pad" }, ["No items yet."]));
+    }
+    cat.Items.forEach(function (item, ii) {
+      wrap.appendChild(renderItem(cat, item, ii));
+    });
+    return wrap;
+  }
+
+  function renderItem(cat, item, ii) {
+    var body = h("div", { class: "accordion-body" }, [
+      grid2([
+        numberField("Order", item.Order, function (v) { item.Order = intOr(v, 0); }),
+        priceField("Price", item.Price, function (v) { item.Price = floatOr(v, 0); })
+      ]),
+      checkboxField("Mark as new", !!item.IsNew, function (v) { item.IsNew = v; }),
+      translationsField("Name", item.Name, function (t) { item.Name = t; }),
+      translationsField("Short description", item.ShortDescription || {}, function (t) {
+        item.ShortDescription = isEmptyTranslations(t) ? null : t;
+      }),
+      translationsField("Full description", item.FullDescription || {}, function (t) {
+        item.FullDescription = isEmptyTranslations(t) ? null : t;
+      }),
+      translationsField("Ingredients", item.Ingredients || {}, function (t) {
+        item.Ingredients = isEmptyTranslations(t) ? null : t;
+      }),
+      translationsField("Allergens", item.Allergens || {}, function (t) {
+        item.Allergens = isEmptyTranslations(t) ? null : t;
+      }),
+      dietsField(item),
+      youTubeField(item),
+      imagesField(item)
+    ]);
+
+    return accordion(
+      "Item " + (ii + 1) + nameHint(item.Name),
+      [
+        iconButton("↑", "Move up", function () { move(cat.Items, ii, -1); renderForm(); }),
+        iconButton("↓", "Move down", function () { move(cat.Items, ii, 1); renderForm(); }),
+        iconButton("✕", "Remove item", function () {
+          if (confirm("Remove this item?")) { cat.Items.splice(ii, 1); renderForm(); }
+        })
+      ],
+      body,
+      true
+    );
+  }
+
+  // ---- Field builders -----------------------------------------------------
+  function card(title, children) {
+    return h("section", { class: "card" }, [h("h2", null, [title])].concat(children));
+  }
+
+  function grid2(children) {
+    return h("div", { class: "grid grid-2 tight" }, children);
+  }
+
+  function field(labelText, control, help) {
+    return h("label", { class: "field" }, [
+      h("span", { class: "field-label" }, [labelText]),
+      help ? h("span", { class: "field-help" }, [help]) : null,
+      control
+    ]);
+  }
+
+  function textField(label, value, onChange, opts) {
+    opts = opts || {};
+    var input = h("input", {
+      type: "text", value: value || "", placeholder: opts.placeholder || "",
+      oninput: function (e) { onChange(e.target.value); }
+    });
+    return field(label + (opts.required ? " *" : ""), input);
+  }
+
+  function numberField(label, value, onChange) {
+    var input = h("input", {
+      type: "number", value: value == null ? "" : value, step: "1",
+      oninput: function (e) { onChange(e.target.value); }
+    });
+    return field(label, input);
+  }
+
+  function priceField(label, value, onChange) {
+    var input = h("input", {
+      type: "number", value: value == null ? "" : value, step: "0.01", min: "0",
+      oninput: function (e) { onChange(e.target.value); }
+    });
+    return field(label, input);
+  }
+
+  function selectField(label, value, enumMap, onChange) {
+    var select = h("select", {
+      onchange: function (e) { onChange(e.target.value); }
+    }, Object.keys(enumMap).map(function (k) {
+      return h("option", { value: k, selected: Number(k) === Number(value) }, [enumMap[k]]);
+    }));
+    return field(label, select);
+  }
+
+  function checkboxField(label, checked, onChange) {
+    var input = h("input", {
+      type: "checkbox", checked: !!checked,
+      onchange: function (e) { onChange(e.target.checked); }
+    });
+    return h("label", { class: "field field-checkbox" }, [
+      input, h("span", null, [label])
+    ]);
+  }
+
+  // Translations: one input per language, bound to a shared object.
+  function translationsField(label, trans, onChange) {
+    var current = Object.assign({}, trans || {});
+    var inputs = LANGUAGES.map(function (lang) {
+      return h("div", { class: "trans-row" }, [
+        h("span", { class: "trans-lang" }, [lang.name]),
+        h("input", {
+          type: "text", value: current[lang.name] || "",
+          placeholder: lang.name + "…",
+          oninput: function (e) {
+            var v = e.target.value;
+            if (v) current[lang.name] = v; else delete current[lang.name];
+            onChange(current);
+          }
+        })
+      ]);
+    });
+    return h("div", { class: "field" }, [
+      h("span", { class: "field-label" }, [label]),
+      h("div", { class: "trans-grid" }, inputs)
+    ]);
+  }
+
+  function dietsField(item) {
+    item.Diets = item.Diets || [];
+    var boxes = Object.keys(E.foodDietType).map(function (k) {
+      var val = Number(k);
+      return h("label", { class: "chip-check" }, [
+        h("input", {
+          type: "checkbox", value: val,
+          checked: item.Diets.indexOf(val) !== -1,
+          onchange: function (e) {
+            if (e.target.checked) {
+              if (item.Diets.indexOf(val) === -1) item.Diets.push(val);
+            } else {
+              item.Diets = item.Diets.filter(function (d) { return d !== val; });
+            }
+          }
+        }),
+        h("span", null, [E.foodDietType[k]])
+      ]);
+    });
+    return h("div", { class: "field" }, [
+      h("span", { class: "field-label" }, ["Diets"]),
+      h("div", { class: "chip-grid" }, boxes)
+    ]);
+  }
+
+  function youTubeField(item) {
+    var input = h("textarea", {
+      rows: "2", placeholder: "One URL per line",
+      oninput: function (e) {
+        var urls = e.target.value.split("\n").map(function (s) { return s.trim(); })
+          .filter(Boolean);
+        item.YouTubeVideoUrls = urls.length ? urls : null;
+      }
+    });
+    input.value = (item.YouTubeVideoUrls || []).join("\n");
+    return field("YouTube video URLs", input);
+  }
+
+  // Single optional image.
+  function imageField(label, img, onChange) {
+    var model = img ? Object.assign({}, img) : null;
+    var container = h("div", { class: "image-box" });
+
+    function paint() {
+      container.innerHTML = "";
+      if (!model) {
+        container.appendChild(h("button", {
+          type: "button", class: "btn btn-ghost btn-sm",
+          onclick: function () {
+            model = { Order: 0, Url: "", Title: null, Source: 0 };
+            onChange(model); paint();
+          }
+        }, ["+ Add image"]));
+        return;
+      }
+      container.appendChild(imageEditor(model, function () { onChange(model); }, function () {
+        model = null; onChange(null); paint();
+      }));
+    }
+    paint();
+    return h("div", { class: "field" }, [
+      h("span", { class: "field-label" }, [label]),
+      container
+    ]);
+  }
+
+  // Multiple images for an item.
+  function imagesField(item) {
+    item.Images = item.Images || [];
+    var container = h("div", { class: "image-list" });
+
+    function paint() {
+      container.innerHTML = "";
+      item.Images.forEach(function (img, idx) {
+        container.appendChild(imageEditor(img, function () {}, function () {
+          item.Images.splice(idx, 1); paint();
+        }));
+      });
+      container.appendChild(h("button", {
+        type: "button", class: "btn btn-ghost btn-sm",
+        onclick: function () {
+          item.Images.push({ Order: item.Images.length, Url: "", Title: null, Source: 0 });
+          paint();
+        }
+      }, ["+ Add image"]));
+    }
+    paint();
+    return h("div", { class: "field" }, [
+      h("span", { class: "field-label" }, ["Images"]),
+      container
+    ]);
+  }
+
+  function imageEditor(img, onChange, onRemove) {
+    return h("div", { class: "image-editor" }, [
+      h("div", { class: "image-fields" }, [
+        h("input", {
+          type: "text", value: img.Url || "", placeholder: "Image URL",
+          oninput: function (e) { img.Url = e.target.value; onChange(); }
+        }),
+        h("input", {
+          type: "text", value: img.Title || "", placeholder: "Title (optional)",
+          oninput: function (e) { img.Title = e.target.value || null; onChange(); }
+        }),
+        h("select", {
+          onchange: function (e) { img.Source = Number(e.target.value); onChange(); }
+        }, Object.keys(E.imageSource).map(function (k) {
+          return h("option", { value: k, selected: Number(k) === Number(img.Source) },
+            [E.imageSource[k]]);
+        })),
+        h("input", {
+          type: "number", class: "order-input", value: img.Order == null ? 0 : img.Order,
+          title: "Order",
+          oninput: function (e) { img.Order = intOr(e.target.value, 0); onChange(); }
+        })
+      ]),
+      iconButton("✕", "Remove image", onRemove)
+    ]);
+  }
+
+  // ---- Structural helpers -------------------------------------------------
+  function sectionHeader(title, addLabel, onAdd, small) {
+    return h("div", { class: "section-header" }, [
+      h(small ? "h4" : "h3", null, [title]),
+      h("button", {
+        type: "button", class: "btn btn-secondary btn-sm", onclick: onAdd
+      }, [addLabel])
+    ]);
+  }
+
+  function accordion(title, actions, body, nested) {
+    var open = false;
+    var bodyWrap = h("div", { class: "accordion-content", hidden: true }, [body]);
+    var caret = h("span", { class: "caret" }, ["▸"]);
+    var header = h("div", { class: "accordion-header" }, [
+      h("button", {
+        type: "button", class: "accordion-toggle",
+        onclick: function () {
+          open = !open;
+          bodyWrap.hidden = !open;
+          caret.textContent = open ? "▾" : "▸";
+        }
+      }, [caret, h("span", null, [title])]),
+      h("div", { class: "accordion-actions" }, actions)
+    ]);
+    return h("div", { class: "accordion" + (nested ? " accordion-nested" : "") }, [header, bodyWrap]);
+  }
+
+  function iconButton(glyph, title, onClick) {
+    return h("button", {
+      type: "button", class: "icon-btn", title: title, onclick: onClick
+    }, [glyph]);
+  }
+
+  function newCategory(order) {
+    return { Id: uuid(), Order: order, Name: {}, Description: null, Items: [], Image: null };
+  }
+
+  function newItem(order) {
+    return {
+      Id: uuid(), Order: order, Diets: [], Images: [], YouTubeVideoUrls: null,
+      Name: {}, ShortDescription: null, FullDescription: null,
+      Ingredients: null, Allergens: null, Price: 0, IsNew: false
+    };
+  }
+
+  function nameHint(trans) {
+    if (!trans) return "";
+    var first = Object.keys(trans)[0];
+    return first ? " — " + trans[first] : "";
+  }
+
+  function move(arr, i, dir) {
+    var j = i + dir;
+    if (j < 0 || j >= arr.length) return;
+    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  }
+
+  // ---- Save ---------------------------------------------------------------
+  function save(targetStatus) {
+    if (!state.menu) { alert("error", "Nothing to save — load or create a menu first."); return; }
+    if (state.view === "json") {
+      // Make sure the latest JSON edits are applied first.
+      applyJson();
+    }
+    clearAlert();
+    var payload = sanitize(state.menu);
+    payload.Status = targetStatus === "Draft" ? 2 : 1;
+
+    var problem = validate(payload);
+    if (problem) { alert("error", problem); return; }
+
+    setBusy(true);
+    AkutApi.saveMenu(payload)
+      .then(function () {
+        state.menu.Status = payload.Status;
+        alert("success", "Menu saved as " + targetStatus + ".");
+      })
+      .catch(function (err) { alert("error", err.message || "Failed to save menu."); })
+      .finally(function () { setBusy(false); });
+  }
+
+  function validate(menu) {
+    if (!menu.TemplateId) return "Template ID is required.";
+    if (isEmptyTranslations(menu.Name)) return "Menu name needs at least one translation.";
+    return null;
+  }
+
+  function setBusy(busy) {
+    refs.saveDraftBtn.disabled = busy;
+    refs.publishBtn.disabled = busy;
+    refs.publishBtn.textContent = busy ? "Saving…" : "Publish (Active)";
+  }
+
+  // Produce a clean payload: strip empty translations/arrays and computed
+  // image fields (e.g. the server-side `Link`).
+  function sanitize(menu) {
+    var out = {
+      Id: menu.Id || uuid(),
+      Logo: cleanImage(menu.Logo),
+      Name: cleanTranslations(menu.Name),
+      Description: cleanTranslationsOrNull(menu.Description),
+      Notes: menu.Notes || null,
+      TemplateId: menu.TemplateId || "",
+      DefaultLanguage: Number(menu.DefaultLanguage),
+      Currency: Number(menu.Currency),
+      Status: Number(menu.Status),
+      Categories: (menu.Categories || []).map(function (cat) {
+        return {
+          Id: cat.Id || uuid(),
+          Order: intOr(cat.Order, 0),
+          Name: cleanTranslations(cat.Name),
+          Description: cleanTranslationsOrNull(cat.Description),
+          Image: cleanImage(cat.Image),
+          Items: (cat.Items || []).map(function (item) {
+            return {
+              Id: item.Id || uuid(),
+              Order: intOr(item.Order, 0),
+              Diets: (item.Diets && item.Diets.length) ? item.Diets.map(Number) : null,
+              Images: cleanImages(item.Images),
+              YouTubeVideoUrls: (item.YouTubeVideoUrls && item.YouTubeVideoUrls.length)
+                ? item.YouTubeVideoUrls : null,
+              Name: cleanTranslations(item.Name),
+              ShortDescription: cleanTranslationsOrNull(item.ShortDescription),
+              FullDescription: cleanTranslationsOrNull(item.FullDescription),
+              Ingredients: cleanTranslationsOrNull(item.Ingredients),
+              Allergens: cleanTranslationsOrNull(item.Allergens),
+              Price: floatOr(item.Price, 0),
+              IsNew: !!item.IsNew
+            };
+          })
+        };
+      })
+    };
+    return out;
+  }
+
+  function cleanImage(img) {
+    if (!img || !img.Url) return null;
+    return {
+      Order: intOr(img.Order, 0),
+      Url: img.Url,
+      Title: img.Title || null,
+      Source: Number(img.Source) || 0
+    };
+  }
+
+  function cleanImages(images) {
+    var cleaned = (images || []).map(cleanImage).filter(Boolean);
+    return cleaned.length ? cleaned : null;
+  }
+
+  function cleanTranslations(trans) {
+    var out = {};
+    Object.keys(trans || {}).forEach(function (k) {
+      if (trans[k]) out[k] = trans[k];
+    });
+    return out;
+  }
+
+  function cleanTranslationsOrNull(trans) {
+    var out = cleanTranslations(trans);
+    return Object.keys(out).length ? out : null;
+  }
+
+  function isEmptyTranslations(trans) {
+    return !trans || Object.keys(cleanTranslations(trans)).length === 0;
+  }
+
+  function intOr(v, d) { var n = parseInt(v, 10); return isNaN(n) ? d : n; }
+  function floatOr(v, d) { var n = parseFloat(v); return isNaN(n) ? d : n; }
+})();

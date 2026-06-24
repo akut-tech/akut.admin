@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Menu · Akut Admin</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+<link rel="stylesheet" href="/assets/css/style.css">
+<!-- App config is generated from _config.yml -> assets/js/config.js -->
+<script src="/assets/js/config.js"></script>
+<script src="/assets/js/auth.js"></script>
+
+</head>
+<body class="layout-app" data-page="menu">
+  <aside class="sidebar">
+  <div class="brand">
+    <span class="brand-mark">🍽️</span>
+    <span class="brand-name">Akut Admin</span>
+  </div>
+  <nav class="nav">
+    <a class="nav-link" href="/" data-nav="dashboard">Dashboard</a>
+    <a class="nav-link" href="/menu/" data-nav="menu">Menu</a>
+    <a class="nav-link" href="/tenant/" data-nav="tenant">Tenant</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-name" id="navUserName">—</div>
+      <div class="user-meta" id="navUserMeta">—</div>
+    </div>
+    <button type="button" class="btn btn-ghost btn-block" onclick="AkutAuth.logout()">Sign out</button>
+  </div>
+</aside>
+<script>
+  (function () {
+    // Highlight the active link based on the current page key.
+    var key = document.body.getAttribute('data-page');
+    if (key) {
+      var active = document.querySelector('.nav-link[data-nav="' + key + '"]');
+      if (active) active.classList.add('is-active');
+    }
+    // Populate the user card from the stored ID token.
+    document.addEventListener('DOMContentLoaded', AkutAuth.renderUserCard);
+  })();
+</script>
+
+  <main class="app-main">
+    <header class="page-header">
+      <h1>Menu editor</h1>
+      <p class="page-sub">Edit the active menu or work on a draft</p>
+    </header>
+    <div class="page-body">
+      <div class="toolbar">
+  <div class="toolbar-group">
+    <label class="field-inline">
+      <span class="field-label">Editing</span>
+      <select id="statusSelect">
+        <option value="Active">Active menu</option>
+        <option value="Draft">Draft</option>
+      </select>
+    </label>
+    <button type="button" class="btn btn-secondary" id="loadBtn">Load</button>
+    <button type="button" class="btn btn-ghost" id="newBtn">New menu</button>
+  </div>
+
+  <div class="toolbar-group">
+    <div class="segmented">
+      <button type="button" class="seg is-active" id="formTab">Form</button>
+      <button type="button" class="seg" id="jsonTab">JSON</button>
+    </div>
+    <button type="button" class="btn btn-secondary" id="saveDraftBtn">Save as draft</button>
+    <button type="button" class="btn btn-primary" id="publishBtn">Publish (Active)</button>
+  </div>
+</div>
+
+<div id="menuAlert" class="alert" hidden></div>
+
+<div id="loadingState" class="empty-state" hidden>Loading…</div>
+
+<div id="emptyState" class="empty-state" hidden>
+  No menu loaded. Choose <strong>Active</strong> or <strong>Draft</strong> and press
+  <strong>Load</strong>, or start a <strong>New menu</strong>.
+</div>
+
+<!-- Form editor -->
+<div id="editorRoot" hidden></div>
+
+<!-- Raw JSON editor -->
+<div id="jsonRoot" class="card" hidden>
+  <p class="field-help">Raw menu payload sent to <code>PUT /menu</code>.
+    Edit carefully — this must match the akut.domain <code>Menu</code> shape.</p>
+  <textarea id="jsonArea" class="json-area" spellcheck="false"></textarea>
+  <div class="inline-controls">
+    <button type="button" class="btn btn-secondary" id="jsonApply">Apply to form</button>
+    <span class="field-saved" id="jsonStatus"></span>
+  </div>
+</div>
+
+    </div>
+  </main>
+  <!-- Guard: redirect to login if there is no valid session -->
+  <script>AkutAuth.requireAuth();</script>
+  
+    
+      <script src="/assets/js/api.js"></script>
+    
+      <script src="/assets/js/menu.js"></script>
+    
+  
+</body>
+</html>

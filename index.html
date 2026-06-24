@@ -1,0 +1,50 @@
+---
+layout: app
+title: Dashboard
+nav_key: dashboard
+heading: Dashboard
+subheading: Manage your Akut menu and tenant status
+app_scripts:
+  - /assets/js/api.js
+  - /assets/js/dashboard.js
+---
+<div class="grid grid-2">
+  <a class="card card-link" href="{{ '/menu/' | relative_url }}">
+    <div class="card-icon">📋</div>
+    <h2>Menu</h2>
+    <p>View and edit the active menu, work on a draft, and publish changes.</p>
+    <span class="card-cta">Open menu editor →</span>
+  </a>
+
+  <a class="card card-link" href="{{ '/tenant/' | relative_url }}">
+    <div class="card-icon">🏢</div>
+    <h2>Tenant</h2>
+    <p>Enable or disable the tenant. Disabling hides the menu from customers.</p>
+    <span class="card-cta">Manage tenant →</span>
+  </a>
+</div>
+
+<section class="card" id="contextCard">
+  <h2>Session</h2>
+  <dl class="def-list">
+    <div><dt>Signed in as</dt><dd id="ctxUser">—</dd></div>
+    <div><dt>Email</dt><dd id="ctxEmail">—</dd></div>
+    <div><dt>Role</dt><dd id="ctxRole">—</dd></div>
+    <div><dt>Tenant</dt><dd id="ctxTenant">—</dd></div>
+  </dl>
+
+  <div id="subTenantBlock" hidden>
+    <hr class="divider">
+    <label class="field">
+      <span class="field-label">Target sub-tenant</span>
+      <p class="field-help">Choose which sub-tenant your requests apply to. The
+        options come from your account's <code>custom:subtenants</code> claim and
+        the selection is sent as the <code>sub-tenant</code> header.</p>
+      <div class="inline-controls">
+        <select id="subTenantSelect"></select>
+        <button type="button" class="btn btn-secondary" id="subTenantSave">Save</button>
+      </div>
+      <span class="field-saved" id="subTenantSaved" hidden>Saved ✓</span>
+    </label>
+  </div>
+</section>

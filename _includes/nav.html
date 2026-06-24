@@ -1,0 +1,30 @@
+<aside class="sidebar">
+  <div class="brand">
+    <span class="brand-mark">🍽️</span>
+    <span class="brand-name">Akut Admin</span>
+  </div>
+  <nav class="nav">
+    <a class="nav-link" href="{{ '/' | relative_url }}" data-nav="dashboard">Dashboard</a>
+    <a class="nav-link" href="{{ '/menu/' | relative_url }}" data-nav="menu">Menu</a>
+    <a class="nav-link" href="{{ '/tenant/' | relative_url }}" data-nav="tenant">Tenant</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-name" id="navUserName">—</div>
+      <div class="user-meta" id="navUserMeta">—</div>
+    </div>
+    <button type="button" class="btn btn-ghost btn-block" onclick="AkutAuth.logout()">Sign out</button>
+  </div>
+</aside>
+<script>
+  (function () {
+    // Highlight the active link based on the current page key.
+    var key = document.body.getAttribute('data-page');
+    if (key) {
+      var active = document.querySelector('.nav-link[data-nav="' + key + '"]');
+      if (active) active.classList.add('is-active');
+    }
+    // Populate the user card from the stored ID token.
+    document.addEventListener('DOMContentLoaded', AkutAuth.renderUserCard);
+  })();
+</script>

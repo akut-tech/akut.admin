@@ -1,0 +1,31 @@
+---
+layout: app
+title: Tenant
+nav_key: tenant
+heading: Tenant
+subheading: Enable or disable this tenant
+permalink: /tenant/
+app_scripts:
+  - /assets/js/api.js
+  - /assets/js/tenant.js
+---
+<section class="card">
+  <div class="status-row">
+    <div>
+      <h2>Tenant status</h2>
+      <p class="muted">Disabling a tenant hides its menu from customers. This is
+        an admin operation.</p>
+    </div>
+    <span class="badge" id="tenantBadge">—</span>
+  </div>
+
+  <div id="tenantAlert" class="alert" hidden></div>
+
+  <div class="status-actions">
+    <button type="button" class="btn btn-success" id="enableBtn">Enable tenant</button>
+    <button type="button" class="btn btn-danger" id="disableBtn">Disable tenant</button>
+  </div>
+
+  <p class="field-help">Note: the API does not return the current tenant status,
+    so the badge reflects your most recent action in this session.</p>
+</section>

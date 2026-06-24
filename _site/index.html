@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Dashboard · Akut Admin</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+<link rel="stylesheet" href="/assets/css/style.css">
+<!-- App config is generated from _config.yml -> assets/js/config.js -->
+<script src="/assets/js/config.js"></script>
+<script src="/assets/js/auth.js"></script>
+
+</head>
+<body class="layout-app" data-page="dashboard">
+  <aside class="sidebar">
+  <div class="brand">
+    <span class="brand-mark">🍽️</span>
+    <span class="brand-name">Akut Admin</span>
+  </div>
+  <nav class="nav">
+    <a class="nav-link" href="/" data-nav="dashboard">Dashboard</a>
+    <a class="nav-link" href="/menu/" data-nav="menu">Menu</a>
+    <a class="nav-link" href="/tenant/" data-nav="tenant">Tenant</a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-name" id="navUserName">—</div>
+      <div class="user-meta" id="navUserMeta">—</div>
+    </div>
+    <button type="button" class="btn btn-ghost btn-block" onclick="AkutAuth.logout()">Sign out</button>
+  </div>
+</aside>
+<script>
+  (function () {
+    // Highlight the active link based on the current page key.
+    var key = document.body.getAttribute('data-page');
+    if (key) {
+      var active = document.querySelector('.nav-link[data-nav="' + key + '"]');
+      if (active) active.classList.add('is-active');
+    }
+    // Populate the user card from the stored ID token.
+    document.addEventListener('DOMContentLoaded', AkutAuth.renderUserCard);
+  })();
+</script>
+
+  <main class="app-main">
+    <header class="page-header">
+      <h1>Dashboard</h1>
+      <p class="page-sub">Manage your Akut menu and tenant status</p>
+    </header>
+    <div class="page-body">
+      <div class="grid grid-2">
+  <a class="card card-link" href="/menu/">
+    <div class="card-icon">📋</div>
+    <h2>Menu</h2>
+    <p>View and edit the active menu, work on a draft, and publish changes.</p>
+    <span class="card-cta">Open menu editor →</span>
+  </a>
+
+  <a class="card card-link" href="/tenant/">
+    <div class="card-icon">🏢</div>
+    <h2>Tenant</h2>
+    <p>Enable or disable the tenant. Disabling hides the menu from customers.</p>
+    <span class="card-cta">Manage tenant →</span>
+  </a>
+</div>
+
+<section class="card" id="contextCard">
+  <h2>Session</h2>
+  <dl class="def-list">
+    <div><dt>Signed in as</dt><dd id="ctxUser">—</dd></div>
+    <div><dt>Email</dt><dd id="ctxEmail">—</dd></div>
+    <div><dt>Role</dt><dd id="ctxRole">—</dd></div>
+    <div><dt>Tenant</dt><dd id="ctxTenant">—</dd></div>
+  </dl>
+
+  <div id="subTenantBlock" hidden>
+    <hr class="divider">
+    <label class="field">
+      <span class="field-label">Target sub-tenant</span>
+      <p class="field-help">Your admin account has no tenant claim, so requests
+        are scoped by this value (sent as the <code>sub-tenant</code> header).</p>
+      <div class="inline-controls">
+        <input type="text" id="subTenantInput" placeholder="tenant-id">
+        <button type="button" class="btn btn-secondary" id="subTenantSave">Save</button>
+      </div>
+      <span class="field-saved" id="subTenantSaved" hidden>Saved ✓</span>
+    </label>
+  </div>
+</section>
+
+    </div>
+  </main>
+  <!-- Guard: redirect to login if there is no valid session -->
+  <script>AkutAuth.requireAuth();</script>
+  
+    
+      <script src="/assets/js/api.js"></script>
+    
+      <script src="/assets/js/dashboard.js"></script>
+    
+  
+</body>
+</html>

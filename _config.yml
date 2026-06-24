@@ -1,0 +1,36 @@
+# Akut Admin — Jekyll configuration
+title: Akut Admin
+description: Admin console for managing Akut menus and tenants via lambda.akut
+lang: en
+
+# --- Build settings ---
+# Serve the app from the site root in dev. If you deploy under a sub-path
+# (e.g. GitHub Pages project site), set baseurl accordingly (e.g. "/akut.admin").
+baseurl: ""
+url: ""
+
+# Exclude tooling/docs from the generated site
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - vendor
+  - .gitignore
+
+# ---------------------------------------------------------------------------
+# Runtime configuration consumed by the browser (see assets/js/config.js).
+# Override these for each environment — they are baked into the static site
+# at build time, so rebuild after changing them.
+# ---------------------------------------------------------------------------
+akut:
+  # Base URL of the deployed API Gateway (HTTP API v2) that fronts lambda.akut.
+  # Example: https://abc123.execute-api.eu-west-1.amazonaws.com
+  api_base_url: "https://REPLACE-WITH-YOUR-API-ID.execute-api.eu-west-1.amazonaws.com"
+
+  # Route paths mapped to the Menu/Tenant lambda handlers.
+  menu_path: "/menu"
+  tenant_path: "/tenant"
+
+  # Amazon Cognito (used by the login page).
+  cognito_region: "eu-west-1"
+  cognito_client_id: "175hkjpgbetjh1a5r05vkcps8r"

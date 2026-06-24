@@ -1,0 +1,36 @@
+---
+layout: default
+title: Sign in
+permalink: /login/
+---
+<div class="auth-card">
+  <div class="auth-brand">
+    <span class="brand-mark">🍽️</span>
+    <h1>Akut Admin</h1>
+    <p class="auth-tagline">Manage menus &amp; tenants</p>
+  </div>
+
+  <form id="loginForm" class="auth-form" autocomplete="on" novalidate>
+    <label class="field">
+      <span class="field-label">Username</span>
+      <input type="text" id="username" name="username" autocomplete="username"
+             required autofocus placeholder="you@example.com">
+    </label>
+
+    <label class="field">
+      <span class="field-label">Password</span>
+      <input type="password" id="password" name="password"
+             autocomplete="current-password" required placeholder="••••••••">
+    </label>
+
+    <div id="loginError" class="alert alert-error" hidden></div>
+
+    <button type="submit" id="loginButton" class="btn btn-primary btn-block">
+      Sign in
+    </button>
+  </form>
+
+  <p class="auth-foot">Authenticated with Amazon Cognito</p>
+</div>
+
+<script src="{{ '/assets/js/login.js' | relative_url }}"></script>
