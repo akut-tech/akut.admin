@@ -12,9 +12,8 @@ app_scripts:
 <section class="card">
   <div class="status-row">
     <div>
-      <h2>Tenant status</h2>
-      <p class="muted">Disabling a tenant hides its menu from customers. This is
-        an admin operation.</p>
+      <h2 data-i18n="tenant.status">Tenant status</h2>
+      <p class="muted" data-i18n="tenant.statusDesc">Disabling a tenant hides its menu from customers. This is an admin operation.</p>
     </div>
     <span class="badge" id="tenantBadge">—</span>
   </div>
@@ -22,10 +21,10 @@ app_scripts:
   <div id="tenantAlert" class="alert" hidden></div>
 
   <div class="status-actions">
-    <button type="button" class="btn btn-success" id="enableBtn">Enable tenant</button>
-    <button type="button" class="btn btn-danger" id="disableBtn">Disable tenant</button>
+    <button type="button" class="btn btn-success" id="enableBtn" data-i18n="tenant.enable">Enable tenant</button>
+    <button type="button" class="btn btn-danger" id="disableBtn" data-i18n="tenant.disable">Disable tenant</button>
   </div>
 
-  <p class="field-help">Note: the API does not return the current tenant status,
+  <p class="field-help" data-i18n="tenant.note">Note: the API does not return the current tenant status,
     so the badge reflects your most recent action in this session.</p>
 </section>

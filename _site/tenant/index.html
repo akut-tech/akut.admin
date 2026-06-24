@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/assets/css/style.css">
 <!-- App config is generated from _config.yml -> assets/js/config.js -->
 <script src="/assets/js/config.js"></script>
+<script src="/assets/js/i18n.js"></script>
 <script src="/assets/js/auth.js"></script>
 
 </head>
@@ -16,30 +17,32 @@
   <aside class="sidebar">
   <div class="brand">
     <span class="brand-mark">🍽️</span>
-    <span class="brand-name">Akut Admin</span>
+    <span class="brand-name" data-i18n="nav.brand">Akut Admin</span>
   </div>
   <nav class="nav">
-    <a class="nav-link" href="/" data-nav="dashboard">Dashboard</a>
-    <a class="nav-link" href="/menu/" data-nav="menu">Menu</a>
-    <a class="nav-link" href="/tenant/" data-nav="tenant">Tenant</a>
+    <a class="nav-link" href="/" data-nav="dashboard" data-i18n="nav.dashboard">Dashboard</a>
+    <a class="nav-link" href="/menu/" data-nav="menu" data-i18n="nav.menu">Menu</a>
+    <a class="nav-link" href="/tenant/" data-nav="tenant" data-i18n="nav.tenant">Tenant</a>
   </nav>
   <div class="sidebar-footer">
+    <div class="lang-switcher">
+      <button type="button" class="lang-btn" data-lang-btn="en" onclick="AkutI18n.setLang('en')">EN</button>
+      <button type="button" class="lang-btn" data-lang-btn="pt" onclick="AkutI18n.setLang('pt')">PT</button>
+    </div>
     <div class="user-card">
       <div class="user-name" id="navUserName">—</div>
       <div class="user-meta" id="navUserMeta">—</div>
     </div>
-    <button type="button" class="btn btn-ghost btn-block" onclick="AkutAuth.logout()">Sign out</button>
+    <button type="button" class="btn btn-ghost btn-block" onclick="AkutAuth.logout()" data-i18n="nav.signOut">Sign out</button>
   </div>
 </aside>
 <script>
   (function () {
-    // Highlight the active link based on the current page key.
     var key = document.body.getAttribute('data-page');
     if (key) {
       var active = document.querySelector('.nav-link[data-nav="' + key + '"]');
       if (active) active.classList.add('is-active');
     }
-    // Populate the user card from the stored ID token.
     document.addEventListener('DOMContentLoaded', AkutAuth.renderUserCard);
   })();
 </script>
@@ -53,9 +56,8 @@
       <section class="card">
   <div class="status-row">
     <div>
-      <h2>Tenant status</h2>
-      <p class="muted">Disabling a tenant hides its menu from customers. This is
-        an admin operation.</p>
+      <h2 data-i18n="tenant.status">Tenant status</h2>
+      <p class="muted" data-i18n="tenant.statusDesc">Disabling a tenant hides its menu from customers. This is an admin operation.</p>
     </div>
     <span class="badge" id="tenantBadge">—</span>
   </div>
@@ -63,11 +65,11 @@
   <div id="tenantAlert" class="alert" hidden></div>
 
   <div class="status-actions">
-    <button type="button" class="btn btn-success" id="enableBtn">Enable tenant</button>
-    <button type="button" class="btn btn-danger" id="disableBtn">Disable tenant</button>
+    <button type="button" class="btn btn-success" id="enableBtn" data-i18n="tenant.enable">Enable tenant</button>
+    <button type="button" class="btn btn-danger" id="disableBtn" data-i18n="tenant.disable">Disable tenant</button>
   </div>
 
-  <p class="field-help">Note: the API does not return the current tenant status,
+  <p class="field-help" data-i18n="tenant.note">Note: the API does not return the current tenant status,
     so the badge reflects your most recent action in this session.</p>
 </section>
 

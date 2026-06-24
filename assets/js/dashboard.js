@@ -9,19 +9,14 @@
       c["cognito:username"] || "—";
     set("ctxUser", name);
     set("ctxEmail", c.email || "—");
-    set("ctxRole", AkutAuth.isAdmin() ? "Admin" : "Customer");
+    set("ctxRole", AkutAuth.isAdmin() ? t("dashboard.role.admin") : t("dashboard.role.customer"));
 
-    // The list of sub-tenants the user may target comes from the token's
-    // custom:subtenants claim. Show the selector whenever it is populated.
     var subTenants = AkutAuth.subTenants();
     if (subTenants.length) {
       var block = document.getElementById("subTenantBlock");
       block.hidden = false;
       var select = document.getElementById("subTenantSelect");
 
-      // Resolve the active selection: keep a previously saved value if it is
-      // still valid, otherwise default to the tenant claim (when listed) or the
-      // first available sub-tenant.
       var current = AkutApi.getSubTenant();
       if (subTenants.indexOf(current) === -1) {
         current = subTenants.indexOf(c["custom:tenant"]) !== -1
@@ -30,11 +25,11 @@
         AkutApi.setSubTenant(current);
       }
 
-      subTenants.forEach(function (t) {
+      subTenants.forEach(function (st) {
         var opt = document.createElement("option");
-        opt.value = t;
-        opt.textContent = t;
-        if (t === current) opt.selected = true;
+        opt.value = st;
+        opt.textContent = st;
+        if (st === current) opt.selected = true;
         select.appendChild(opt);
       });
 

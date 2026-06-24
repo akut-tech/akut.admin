@@ -11,40 +11,38 @@ app_scripts:
 <div class="grid grid-2">
   <a class="card card-link" href="{{ '/menu/' | relative_url }}">
     <div class="card-icon">📋</div>
-    <h2>Menu</h2>
-    <p>View and edit the active menu, work on a draft, and publish changes.</p>
-    <span class="card-cta">Open menu editor →</span>
+    <h2 data-i18n="dashboard.cardMenu.title">Menu</h2>
+    <p data-i18n="dashboard.cardMenu.desc">View and edit the active menu, work on a draft, and publish changes.</p>
+    <span class="card-cta" data-i18n="dashboard.cardMenu.cta">Open menu editor →</span>
   </a>
 
   <a class="card card-link" href="{{ '/tenant/' | relative_url }}">
     <div class="card-icon">🏢</div>
-    <h2>Tenant</h2>
-    <p>Enable or disable the tenant. Disabling hides the menu from customers.</p>
-    <span class="card-cta">Manage tenant →</span>
+    <h2 data-i18n="dashboard.cardTenant.title">Tenant</h2>
+    <p data-i18n="dashboard.cardTenant.desc">Enable or disable the tenant. Disabling hides the menu from customers.</p>
+    <span class="card-cta" data-i18n="dashboard.cardTenant.cta">Manage tenant →</span>
   </a>
 </div>
 
 <section class="card" id="contextCard">
-  <h2>Session</h2>
+  <h2 data-i18n="dashboard.session.title">Session</h2>
   <dl class="def-list">
-    <div><dt>Signed in as</dt><dd id="ctxUser">—</dd></div>
-    <div><dt>Email</dt><dd id="ctxEmail">—</dd></div>
-    <div><dt>Role</dt><dd id="ctxRole">—</dd></div>
-    <div><dt>Tenant</dt><dd id="ctxTenant">—</dd></div>
+    <div><dt data-i18n="dashboard.session.signedInAs">Signed in as</dt><dd id="ctxUser">—</dd></div>
+    <div><dt data-i18n="dashboard.session.email">Email</dt><dd id="ctxEmail">—</dd></div>
+    <div><dt data-i18n="dashboard.session.role">Role</dt><dd id="ctxRole">—</dd></div>
+    <div><dt data-i18n="dashboard.session.tenant">Tenant</dt><dd id="ctxTenant">—</dd></div>
   </dl>
 
   <div id="subTenantBlock" hidden>
     <hr class="divider">
     <label class="field">
-      <span class="field-label">Target sub-tenant</span>
-      <p class="field-help">Choose which sub-tenant your requests apply to. The
-        options come from your account's <code>custom:subtenants</code> claim and
-        the selection is sent as the <code>sub-tenant</code> header.</p>
+      <span class="field-label" data-i18n="dashboard.subTenant.label">Target sub-tenant</span>
+      <p class="field-help" data-i18n-html="dashboard.subTenant.help">Choose which sub-tenant your requests apply to.</p>
       <div class="inline-controls">
         <select id="subTenantSelect"></select>
-        <button type="button" class="btn btn-secondary" id="subTenantSave">Save</button>
+        <button type="button" class="btn btn-secondary" id="subTenantSave" data-i18n="dashboard.subTenant.save">Save</button>
       </div>
-      <span class="field-saved" id="subTenantSaved" hidden>Saved ✓</span>
+      <span class="field-saved" id="subTenantSaved" hidden data-i18n="dashboard.subTenant.saved">Saved ✓</span>
     </label>
   </div>
 </section>

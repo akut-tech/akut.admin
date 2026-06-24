@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/assets/css/style.css">
 <!-- App config is generated from _config.yml -> assets/js/config.js -->
 <script src="/assets/js/config.js"></script>
+<script src="/assets/js/i18n.js"></script>
 <script src="/assets/js/auth.js"></script>
 
 </head>
@@ -16,30 +17,32 @@
   <aside class="sidebar">
   <div class="brand">
     <span class="brand-mark">🍽️</span>
-    <span class="brand-name">Akut Admin</span>
+    <span class="brand-name" data-i18n="nav.brand">Akut Admin</span>
   </div>
   <nav class="nav">
-    <a class="nav-link" href="/" data-nav="dashboard">Dashboard</a>
-    <a class="nav-link" href="/menu/" data-nav="menu">Menu</a>
-    <a class="nav-link" href="/tenant/" data-nav="tenant">Tenant</a>
+    <a class="nav-link" href="/" data-nav="dashboard" data-i18n="nav.dashboard">Dashboard</a>
+    <a class="nav-link" href="/menu/" data-nav="menu" data-i18n="nav.menu">Menu</a>
+    <a class="nav-link" href="/tenant/" data-nav="tenant" data-i18n="nav.tenant">Tenant</a>
   </nav>
   <div class="sidebar-footer">
+    <div class="lang-switcher">
+      <button type="button" class="lang-btn" data-lang-btn="en" onclick="AkutI18n.setLang('en')">EN</button>
+      <button type="button" class="lang-btn" data-lang-btn="pt" onclick="AkutI18n.setLang('pt')">PT</button>
+    </div>
     <div class="user-card">
       <div class="user-name" id="navUserName">—</div>
       <div class="user-meta" id="navUserMeta">—</div>
     </div>
-    <button type="button" class="btn btn-ghost btn-block" onclick="AkutAuth.logout()">Sign out</button>
+    <button type="button" class="btn btn-ghost btn-block" onclick="AkutAuth.logout()" data-i18n="nav.signOut">Sign out</button>
   </div>
 </aside>
 <script>
   (function () {
-    // Highlight the active link based on the current page key.
     var key = document.body.getAttribute('data-page');
     if (key) {
       var active = document.querySelector('.nav-link[data-nav="' + key + '"]');
       if (active) active.classList.add('is-active');
     }
-    // Populate the user card from the stored ID token.
     document.addEventListener('DOMContentLoaded', AkutAuth.renderUserCard);
   })();
 </script>
@@ -53,40 +56,38 @@
       <div class="grid grid-2">
   <a class="card card-link" href="/menu/">
     <div class="card-icon">📋</div>
-    <h2>Menu</h2>
-    <p>View and edit the active menu, work on a draft, and publish changes.</p>
-    <span class="card-cta">Open menu editor →</span>
+    <h2 data-i18n="dashboard.cardMenu.title">Menu</h2>
+    <p data-i18n="dashboard.cardMenu.desc">View and edit the active menu, work on a draft, and publish changes.</p>
+    <span class="card-cta" data-i18n="dashboard.cardMenu.cta">Open menu editor →</span>
   </a>
 
   <a class="card card-link" href="/tenant/">
     <div class="card-icon">🏢</div>
-    <h2>Tenant</h2>
-    <p>Enable or disable the tenant. Disabling hides the menu from customers.</p>
-    <span class="card-cta">Manage tenant →</span>
+    <h2 data-i18n="dashboard.cardTenant.title">Tenant</h2>
+    <p data-i18n="dashboard.cardTenant.desc">Enable or disable the tenant. Disabling hides the menu from customers.</p>
+    <span class="card-cta" data-i18n="dashboard.cardTenant.cta">Manage tenant →</span>
   </a>
 </div>
 
 <section class="card" id="contextCard">
-  <h2>Session</h2>
+  <h2 data-i18n="dashboard.session.title">Session</h2>
   <dl class="def-list">
-    <div><dt>Signed in as</dt><dd id="ctxUser">—</dd></div>
-    <div><dt>Email</dt><dd id="ctxEmail">—</dd></div>
-    <div><dt>Role</dt><dd id="ctxRole">—</dd></div>
-    <div><dt>Tenant</dt><dd id="ctxTenant">—</dd></div>
+    <div><dt data-i18n="dashboard.session.signedInAs">Signed in as</dt><dd id="ctxUser">—</dd></div>
+    <div><dt data-i18n="dashboard.session.email">Email</dt><dd id="ctxEmail">—</dd></div>
+    <div><dt data-i18n="dashboard.session.role">Role</dt><dd id="ctxRole">—</dd></div>
+    <div><dt data-i18n="dashboard.session.tenant">Tenant</dt><dd id="ctxTenant">—</dd></div>
   </dl>
 
   <div id="subTenantBlock" hidden>
     <hr class="divider">
     <label class="field">
-      <span class="field-label">Target sub-tenant</span>
-      <p class="field-help">Choose which sub-tenant your requests apply to. The
-        options come from your account's <code>custom:subtenants</code> claim and
-        the selection is sent as the <code>sub-tenant</code> header.</p>
+      <span class="field-label" data-i18n="dashboard.subTenant.label">Target sub-tenant</span>
+      <p class="field-help" data-i18n-html="dashboard.subTenant.help">Choose which sub-tenant your requests apply to.</p>
       <div class="inline-controls">
         <select id="subTenantSelect"></select>
-        <button type="button" class="btn btn-secondary" id="subTenantSave">Save</button>
+        <button type="button" class="btn btn-secondary" id="subTenantSave" data-i18n="dashboard.subTenant.save">Save</button>
       </div>
-      <span class="field-saved" id="subTenantSaved" hidden>Saved ✓</span>
+      <span class="field-saved" id="subTenantSaved" hidden data-i18n="dashboard.subTenant.saved">Saved ✓</span>
     </label>
   </div>
 </section>

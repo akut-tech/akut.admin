@@ -20,13 +20,13 @@
 
   function renderBadge(status) {
     if (status === "Enabled") {
-      badge.textContent = "Enabled";
+      badge.textContent = t("tenant.enabled");
       badge.className = "badge badge-success";
     } else if (status === "Disabled") {
-      badge.textContent = "Disabled";
+      badge.textContent = t("tenant.disabled");
       badge.className = "badge badge-danger";
     } else {
-      badge.textContent = "Unknown";
+      badge.textContent = t("tenant.unknown");
       badge.className = "badge";
     }
   }
@@ -44,7 +44,7 @@
 
   function update(status) {
     if (status === "Disabled" &&
-        !window.confirm("Disable this tenant? Its menu will be hidden from customers.")) {
+        !window.confirm(t("tenant.confirmDisable"))) {
       return;
     }
     alertBox.hidden = true;
@@ -53,10 +53,11 @@
       .then(function () {
         localStorage.setItem(LAST_KEY, status);
         renderBadge(status);
-        showAlert("success", "Tenant " + status.toLowerCase() + " successfully.");
+        var msg = status === "Enabled" ? t("tenant.enabledSuccess") : t("tenant.disabledSuccess");
+        showAlert("success", msg);
       })
       .catch(function (err) {
-        showAlert("error", err.message || "Failed to update tenant status.");
+        showAlert("error", err.message || t("tenant.errorUpdate"));
       })
       .finally(function () { setBusy(false); });
   }

@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/assets/css/style.css">
 <!-- App config is generated from _config.yml -> assets/js/config.js -->
 <script src="/assets/js/config.js"></script>
+<script src="/assets/js/i18n.js"></script>
 <script src="/assets/js/auth.js"></script>
 
 </head>
@@ -17,31 +18,34 @@
     <div class="auth-card">
   <div class="auth-brand">
     <span class="brand-mark">🍽️</span>
-    <h1>Akut Admin</h1>
-    <p class="auth-tagline">Manage menus &amp; tenants</p>
+    <h1 data-i18n="login.brand">Akut Admin</h1>
+    <p class="auth-tagline" data-i18n="login.tagline">Manage menus &amp; tenants</p>
   </div>
 
   <form id="loginForm" class="auth-form" autocomplete="on" novalidate>
     <label class="field">
-      <span class="field-label">Username</span>
+      <span class="field-label" data-i18n="login.username">Username</span>
       <input type="text" id="username" name="username" autocomplete="username"
-             required autofocus placeholder="you@example.com">
+             required autofocus data-i18n-placeholder="login.username" placeholder="Username">
     </label>
 
     <label class="field">
-      <span class="field-label">Password</span>
+      <span class="field-label" data-i18n="login.password">Password</span>
       <input type="password" id="password" name="password"
              autocomplete="current-password" required placeholder="••••••••">
     </label>
 
     <div id="loginError" class="alert alert-error" hidden></div>
 
-    <button type="submit" id="loginButton" class="btn btn-primary btn-block">
+    <button type="submit" id="loginButton" class="btn btn-primary btn-block" data-i18n="login.submit">
       Sign in
     </button>
   </form>
 
-
+  <div class="lang-switcher lang-switcher-auth">
+    <button type="button" class="lang-btn" data-lang-btn="en" onclick="AkutI18n.setLang('en')">EN</button>
+    <button type="button" class="lang-btn" data-lang-btn="pt" onclick="AkutI18n.setLang('pt')">PT</button>
+  </div>
 </div>
 
 <script src="/assets/js/login.js"></script>

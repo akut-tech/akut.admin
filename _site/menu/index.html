@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/assets/css/style.css">
 <!-- App config is generated from _config.yml -> assets/js/config.js -->
 <script src="/assets/js/config.js"></script>
+<script src="/assets/js/i18n.js"></script>
 <script src="/assets/js/auth.js"></script>
 
 </head>
@@ -16,30 +17,32 @@
   <aside class="sidebar">
   <div class="brand">
     <span class="brand-mark">🍽️</span>
-    <span class="brand-name">Akut Admin</span>
+    <span class="brand-name" data-i18n="nav.brand">Akut Admin</span>
   </div>
   <nav class="nav">
-    <a class="nav-link" href="/" data-nav="dashboard">Dashboard</a>
-    <a class="nav-link" href="/menu/" data-nav="menu">Menu</a>
-    <a class="nav-link" href="/tenant/" data-nav="tenant">Tenant</a>
+    <a class="nav-link" href="/" data-nav="dashboard" data-i18n="nav.dashboard">Dashboard</a>
+    <a class="nav-link" href="/menu/" data-nav="menu" data-i18n="nav.menu">Menu</a>
+    <a class="nav-link" href="/tenant/" data-nav="tenant" data-i18n="nav.tenant">Tenant</a>
   </nav>
   <div class="sidebar-footer">
+    <div class="lang-switcher">
+      <button type="button" class="lang-btn" data-lang-btn="en" onclick="AkutI18n.setLang('en')">EN</button>
+      <button type="button" class="lang-btn" data-lang-btn="pt" onclick="AkutI18n.setLang('pt')">PT</button>
+    </div>
     <div class="user-card">
       <div class="user-name" id="navUserName">—</div>
       <div class="user-meta" id="navUserMeta">—</div>
     </div>
-    <button type="button" class="btn btn-ghost btn-block" onclick="AkutAuth.logout()">Sign out</button>
+    <button type="button" class="btn btn-ghost btn-block" onclick="AkutAuth.logout()" data-i18n="nav.signOut">Sign out</button>
   </div>
 </aside>
 <script>
   (function () {
-    // Highlight the active link based on the current page key.
     var key = document.body.getAttribute('data-page');
     if (key) {
       var active = document.querySelector('.nav-link[data-nav="' + key + '"]');
       if (active) active.classList.add('is-active');
     }
-    // Populate the user card from the stored ID token.
     document.addEventListener('DOMContentLoaded', AkutAuth.renderUserCard);
   })();
 </script>
@@ -53,33 +56,32 @@
       <div class="toolbar">
   <div class="toolbar-group">
     <label class="field-inline">
-      <span class="field-label">Editing</span>
+      <span class="field-label" data-i18n="menu.editing">Editing</span>
       <select id="statusSelect">
-        <option value="Active">Active menu</option>
-        <option value="Draft">Draft</option>
+        <option value="Active" data-i18n="menu.activeMenu">Active menu</option>
+        <option value="Draft" data-i18n="menu.draft">Draft</option>
       </select>
     </label>
-    <button type="button" class="btn btn-secondary" id="loadBtn">Load</button>
-    <button type="button" class="btn btn-ghost" id="newBtn">New menu</button>
+    <button type="button" class="btn btn-secondary" id="loadBtn" data-i18n="menu.load">Load</button>
+    <button type="button" class="btn btn-ghost" id="newBtn" data-i18n="menu.newMenu">New menu</button>
   </div>
 
   <div class="toolbar-group">
     <div class="segmented">
-      <button type="button" class="seg is-active" id="formTab">Form</button>
-      <button type="button" class="seg" id="jsonTab">JSON</button>
+      <button type="button" class="seg is-active" id="formTab" data-i18n="menu.form">Form</button>
+      <button type="button" class="seg" id="jsonTab" data-i18n="menu.json">JSON</button>
     </div>
-    <button type="button" class="btn btn-secondary" id="saveDraftBtn">Save as draft</button>
-    <button type="button" class="btn btn-primary" id="publishBtn">Publish (Active)</button>
+    <button type="button" class="btn btn-secondary" id="saveDraftBtn" data-i18n="menu.saveDraft">Save as draft</button>
+    <button type="button" class="btn btn-primary" id="publishBtn" data-i18n="menu.publish">Publish (Active)</button>
   </div>
 </div>
 
 <div id="menuAlert" class="alert" hidden></div>
 
-<div id="loadingState" class="empty-state" hidden>Loading…</div>
+<div id="loadingState" class="empty-state" hidden data-i18n="menu.loading">Loading…</div>
 
-<div id="emptyState" class="empty-state" hidden>
-  No menu loaded. Choose <strong>Active</strong> or <strong>Draft</strong> and press
-  <strong>Load</strong>, or start a <strong>New menu</strong>.
+<div id="emptyState" class="empty-state" hidden data-i18n-html="menu.empty">
+  No menu loaded.
 </div>
 
 <!-- Form editor -->
@@ -87,11 +89,10 @@
 
 <!-- Raw JSON editor -->
 <div id="jsonRoot" class="card" hidden>
-  <p class="field-help">Raw menu payload sent to <code>PUT /menu</code>.
-    Edit carefully — this must match the akut.domain <code>Menu</code> shape.</p>
+  <p class="field-help" data-i18n-html="menu.jsonHelp" data-i18n-vars='{"path":"/menu"}'></p>
   <textarea id="jsonArea" class="json-area" spellcheck="false"></textarea>
   <div class="inline-controls">
-    <button type="button" class="btn btn-secondary" id="jsonApply">Apply to form</button>
+    <button type="button" class="btn btn-secondary" id="jsonApply" data-i18n="menu.applyToForm">Apply to form</button>
     <span class="field-saved" id="jsonStatus"></span>
   </div>
 </div>

@@ -268,3 +268,17 @@ textarea { resize: vertical; }
   width: 100%; min-height: 420px; font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
   font-size: 13px; line-height: 1.5; margin-bottom: 12px;
 }
+
+/* ---------- Language switcher ---------- */
+.lang-switcher { display: flex; gap: 4px; margin-bottom: 10px; }
+.lang-btn {
+  flex: 1; background: transparent; border: 1px solid var(--border);
+  color: var(--muted); border-radius: var(--radius-sm);
+  padding: 5px 0; font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: border-color .15s, color .15s;
+}
+.lang-btn:hover { color: var(--text); border-color: var(--primary); }
+.lang-btn.is-active { background: var(--surface-2); color: var(--text); border-color: var(--primary); }
+.lang-switcher-auth { justify-content: center; gap: 8px; margin-top: 18px; }
+.lang-switcher-auth .lang-btn { flex: 0 0 auto; padding: 5px 16px; }
+@media (max-width: 720px) { .lang-switcher:not(.lang-switcher-auth) { display: none; } }

@@ -14,12 +14,11 @@
   });
 
   var state = {
-    status: "Active",   // which menu we loaded (Active|Draft)
-    menu: null,         // the working Menu object (source of truth)
-    view: "form"        // "form" | "json"
+    status: "Active",
+    menu: null,
+    view: "form"
   };
 
-  // ---- DOM refs -----------------------------------------------------------
   var refs = {};
   document.addEventListener("DOMContentLoaded", function () {
     [
@@ -92,7 +91,7 @@
       })
       .catch(function (err) {
         showOnly("empty");
-        alert("error", err.message || "Failed to load menu.");
+        alert("error", err.message || t("menu.errorLoad"));
       });
   }
 
@@ -114,7 +113,6 @@
     render();
   }
 
-  // Ensure arrays/objects exist and Translations are plain objects.
   function normalize(menu) {
     menu.Name = menu.Name || {};
     menu.Categories = menu.Categories || [];
@@ -150,10 +148,10 @@
     try {
       var parsed = JSON.parse(refs.jsonArea.value);
       state.menu = normalize(parsed);
-      refs.jsonStatus.textContent = "Applied ✓";
+      refs.jsonStatus.textContent = t("menu.jsonApplied");
       refs.jsonStatus.className = "field-saved";
     } catch (e) {
-      refs.jsonStatus.textContent = "Invalid JSON: " + e.message;
+      refs.jsonStatus.textContent = t("menu.jsonInvalid", { msg: e.message });
       refs.jsonStatus.className = "field-saved field-error";
     }
   }
@@ -169,36 +167,34 @@
     var root = refs.editorRoot;
     root.innerHTML = "";
 
-    // --- Menu details ---
-    root.appendChild(card("Menu details", [
+    root.appendChild(card(t("menu.details"), [
       grid2([
-        textField("Template ID", m.TemplateId, function (v) { m.TemplateId = v; },
-          { required: true, placeholder: "e.g. classic-01" }),
-        selectField("Default language", m.DefaultLanguage, E.language, function (v) {
+        textField(t("menu.templateId"), m.TemplateId, function (v) { m.TemplateId = v; },
+          { required: true, placeholder: t("menu.templateIdPlaceholder") }),
+        selectField(t("menu.defaultLanguage"), m.DefaultLanguage, E.language, function (v) {
           m.DefaultLanguage = Number(v);
         })
       ]),
       grid2([
-        selectField("Currency", m.Currency, E.currency, function (v) { m.Currency = Number(v); }),
-        textField("Notes (internal)", m.Notes || "", function (v) { m.Notes = v || null; })
+        selectField(t("menu.currency"), m.Currency, E.currency, function (v) { m.Currency = Number(v); }),
+        textField(t("menu.notes"), m.Notes || "", function (v) { m.Notes = v || null; })
       ]),
-      translationsField("Name", m.Name, function (t) { m.Name = t; }),
-      translationsField("Description", m.Description || {}, function (t) {
-        m.Description = isEmptyTranslations(t) ? null : t;
+      translationsField(t("menu.name"), m.Name, function (tr) { m.Name = tr; }),
+      translationsField(t("menu.description"), m.Description || {}, function (tr) {
+        m.Description = isEmptyTranslations(tr) ? null : tr;
       }),
-      imageField("Logo", m.Logo, function (img) { m.Logo = img; })
+      imageField(t("menu.logo"), m.Logo, function (img) { m.Logo = img; })
     ]));
 
-    // --- Categories ---
     var catsWrap = h("div", { class: "section" }, [
-      sectionHeader("Categories", "Add category", function () {
+      sectionHeader(t("menu.categories"), t("menu.addCategory"), function () {
         m.Categories.push(newCategory(m.Categories.length));
         renderForm();
       })
     ]);
 
     if (!m.Categories.length) {
-      catsWrap.appendChild(h("p", { class: "muted pad" }, ["No categories yet."]));
+      catsWrap.appendChild(h("p", { class: "muted pad" }, [t("menu.noCategories")]));
     }
     m.Categories.forEach(function (cat, ci) {
       catsWrap.appendChild(renderCategory(cat, ci));
@@ -210,24 +206,24 @@
     var m = state.menu;
     var body = h("div", { class: "accordion-body" }, [
       grid2([
-        numberField("Order", cat.Order, function (v) { cat.Order = intOr(v, 0); }),
+        numberField(t("menu.order"), cat.Order, function (v) { cat.Order = intOr(v, 0); }),
         null
       ]),
-      translationsField("Name", cat.Name, function (t) { cat.Name = t; }),
-      translationsField("Description", cat.Description || {}, function (t) {
-        cat.Description = isEmptyTranslations(t) ? null : t;
+      translationsField(t("menu.name"), cat.Name, function (tr) { cat.Name = tr; }),
+      translationsField(t("menu.description"), cat.Description || {}, function (tr) {
+        cat.Description = isEmptyTranslations(tr) ? null : tr;
       }),
-      imageField("Category image", cat.Image, function (img) { cat.Image = img; }),
+      imageField(t("menu.categoryImage"), cat.Image, function (img) { cat.Image = img; }),
       itemsBlock(cat, ci)
     ]);
 
     return accordion(
-      "Category " + (ci + 1) + nameHint(cat.Name),
+      t("menu.categoryN", { n: ci + 1 }) + nameHint(cat.Name),
       [
-        iconButton("↑", "Move up", function () { move(m.Categories, ci, -1); renderForm(); }),
-        iconButton("↓", "Move down", function () { move(m.Categories, ci, 1); renderForm(); }),
-        iconButton("✕", "Remove category", function () {
-          if (confirm("Remove this category and its items?")) {
+        iconButton("↑", t("menu.moveUp"), function () { move(m.Categories, ci, -1); renderForm(); }),
+        iconButton("↓", t("menu.moveDown"), function () { move(m.Categories, ci, 1); renderForm(); }),
+        iconButton("✕", t("menu.removeCategory"), function () {
+          if (confirm(t("menu.confirmRemoveCategory"))) {
             m.Categories.splice(ci, 1); renderForm();
           }
         })
@@ -238,13 +234,13 @@
 
   function itemsBlock(cat, ci) {
     var wrap = h("div", { class: "subsection" }, [
-      sectionHeader("Items", "Add item", function () {
+      sectionHeader(t("menu.items"), t("menu.addItem"), function () {
         cat.Items.push(newItem(cat.Items.length));
         renderForm();
       }, true)
     ]);
     if (!cat.Items.length) {
-      wrap.appendChild(h("p", { class: "muted pad" }, ["No items yet."]));
+      wrap.appendChild(h("p", { class: "muted pad" }, [t("menu.noItems")]));
     }
     cat.Items.forEach(function (item, ii) {
       wrap.appendChild(renderItem(cat, item, ii));
@@ -255,22 +251,22 @@
   function renderItem(cat, item, ii) {
     var body = h("div", { class: "accordion-body" }, [
       grid2([
-        numberField("Order", item.Order, function (v) { item.Order = intOr(v, 0); }),
-        priceField("Price", item.Price, function (v) { item.Price = floatOr(v, 0); })
+        numberField(t("menu.order"), item.Order, function (v) { item.Order = intOr(v, 0); }),
+        priceField(t("menu.price"), item.Price, function (v) { item.Price = floatOr(v, 0); })
       ]),
-      checkboxField("Mark as new", !!item.IsNew, function (v) { item.IsNew = v; }),
-      translationsField("Name", item.Name, function (t) { item.Name = t; }),
-      translationsField("Short description", item.ShortDescription || {}, function (t) {
-        item.ShortDescription = isEmptyTranslations(t) ? null : t;
+      checkboxField(t("menu.markAsNew"), !!item.IsNew, function (v) { item.IsNew = v; }),
+      translationsField(t("menu.name"), item.Name, function (tr) { item.Name = tr; }),
+      translationsField(t("menu.shortDesc"), item.ShortDescription || {}, function (tr) {
+        item.ShortDescription = isEmptyTranslations(tr) ? null : tr;
       }),
-      translationsField("Full description", item.FullDescription || {}, function (t) {
-        item.FullDescription = isEmptyTranslations(t) ? null : t;
+      translationsField(t("menu.fullDesc"), item.FullDescription || {}, function (tr) {
+        item.FullDescription = isEmptyTranslations(tr) ? null : tr;
       }),
-      translationsField("Ingredients", item.Ingredients || {}, function (t) {
-        item.Ingredients = isEmptyTranslations(t) ? null : t;
+      translationsField(t("menu.ingredients"), item.Ingredients || {}, function (tr) {
+        item.Ingredients = isEmptyTranslations(tr) ? null : tr;
       }),
-      translationsField("Allergens", item.Allergens || {}, function (t) {
-        item.Allergens = isEmptyTranslations(t) ? null : t;
+      translationsField(t("menu.allergens"), item.Allergens || {}, function (tr) {
+        item.Allergens = isEmptyTranslations(tr) ? null : tr;
       }),
       dietsField(item),
       youTubeField(item),
@@ -278,12 +274,12 @@
     ]);
 
     return accordion(
-      "Item " + (ii + 1) + nameHint(item.Name),
+      t("menu.itemN", { n: ii + 1 }) + nameHint(item.Name),
       [
-        iconButton("↑", "Move up", function () { move(cat.Items, ii, -1); renderForm(); }),
-        iconButton("↓", "Move down", function () { move(cat.Items, ii, 1); renderForm(); }),
-        iconButton("✕", "Remove item", function () {
-          if (confirm("Remove this item?")) { cat.Items.splice(ii, 1); renderForm(); }
+        iconButton("↑", t("menu.moveUp"), function () { move(cat.Items, ii, -1); renderForm(); }),
+        iconButton("↓", t("menu.moveDown"), function () { move(cat.Items, ii, 1); renderForm(); }),
+        iconButton("✕", t("menu.removeItem"), function () {
+          if (confirm(t("menu.confirmRemoveItem"))) { cat.Items.splice(ii, 1); renderForm(); }
         })
       ],
       body,
@@ -352,7 +348,6 @@
     ]);
   }
 
-  // Translations: one input per language, bound to a shared object.
   function translationsField(label, trans, onChange) {
     var current = Object.assign({}, trans || {});
     var inputs = LANGUAGES.map(function (lang) {
@@ -395,14 +390,14 @@
       ]);
     });
     return h("div", { class: "field" }, [
-      h("span", { class: "field-label" }, ["Diets"]),
+      h("span", { class: "field-label" }, [t("menu.diets")]),
       h("div", { class: "chip-grid" }, boxes)
     ]);
   }
 
   function youTubeField(item) {
     var input = h("textarea", {
-      rows: "2", placeholder: "One URL per line",
+      rows: "2", placeholder: t("menu.youtubePlaceholder"),
       oninput: function (e) {
         var urls = e.target.value.split("\n").map(function (s) { return s.trim(); })
           .filter(Boolean);
@@ -410,10 +405,9 @@
       }
     });
     input.value = (item.YouTubeVideoUrls || []).join("\n");
-    return field("YouTube video URLs", input);
+    return field(t("menu.youtube"), input);
   }
 
-  // Single optional image.
   function imageField(label, img, onChange) {
     var model = img ? Object.assign({}, img) : null;
     var container = h("div", { class: "image-box" });
@@ -427,7 +421,7 @@
             model = { Order: 0, Url: "", Title: null, Source: 0 };
             onChange(model); paint();
           }
-        }, ["+ Add image"]));
+        }, [t("menu.addImage")]));
         return;
       }
       container.appendChild(imageEditor(model, function () { onChange(model); }, function () {
@@ -441,7 +435,6 @@
     ]);
   }
 
-  // Multiple images for an item.
   function imagesField(item) {
     item.Images = item.Images || [];
     var container = h("div", { class: "image-list" });
@@ -459,11 +452,11 @@
           item.Images.push({ Order: item.Images.length, Url: "", Title: null, Source: 0 });
           paint();
         }
-      }, ["+ Add image"]));
+      }, [t("menu.addImage")]));
     }
     paint();
     return h("div", { class: "field" }, [
-      h("span", { class: "field-label" }, ["Images"]),
+      h("span", { class: "field-label" }, [t("menu.images")]),
       container
     ]);
   }
@@ -472,11 +465,11 @@
     return h("div", { class: "image-editor" }, [
       h("div", { class: "image-fields" }, [
         h("input", {
-          type: "text", value: img.Url || "", placeholder: "Image URL",
+          type: "text", value: img.Url || "", placeholder: t("menu.imageUrl"),
           oninput: function (e) { img.Url = e.target.value; onChange(); }
         }),
         h("input", {
-          type: "text", value: img.Title || "", placeholder: "Title (optional)",
+          type: "text", value: img.Title || "", placeholder: t("menu.imageTitle"),
           oninput: function (e) { img.Title = e.target.value || null; onChange(); }
         }),
         h("select", {
@@ -487,11 +480,11 @@
         })),
         h("input", {
           type: "number", class: "order-input", value: img.Order == null ? 0 : img.Order,
-          title: "Order",
+          title: t("menu.order"),
           oninput: function (e) { img.Order = intOr(e.target.value, 0); onChange(); }
         })
       ]),
-      iconButton("✕", "Remove image", onRemove)
+      iconButton("✕", t("menu.removeImage"), onRemove)
     ]);
   }
 
@@ -555,9 +548,8 @@
 
   // ---- Save ---------------------------------------------------------------
   function save(targetStatus) {
-    if (!state.menu) { alert("error", "Nothing to save — load or create a menu first."); return; }
+    if (!state.menu) { alert("error", t("menu.errorNothingToSave")); return; }
     if (state.view === "json") {
-      // Make sure the latest JSON edits are applied first.
       applyJson();
     }
     clearAlert();
@@ -571,26 +563,24 @@
     AkutApi.saveMenu(payload)
       .then(function () {
         state.menu.Status = payload.Status;
-        alert("success", "Menu saved as " + targetStatus + ".");
+        alert("success", t("menu.savedAs", { status: t("menu.status." + targetStatus) }));
       })
-      .catch(function (err) { alert("error", err.message || "Failed to save menu."); })
+      .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
       .finally(function () { setBusy(false); });
   }
 
   function validate(menu) {
-    if (!menu.TemplateId) return "Template ID is required.";
-    if (isEmptyTranslations(menu.Name)) return "Menu name needs at least one translation.";
+    if (!menu.TemplateId) return t("menu.errorTemplateId");
+    if (isEmptyTranslations(menu.Name)) return t("menu.errorName");
     return null;
   }
 
   function setBusy(busy) {
     refs.saveDraftBtn.disabled = busy;
     refs.publishBtn.disabled = busy;
-    refs.publishBtn.textContent = busy ? "Saving…" : "Publish (Active)";
+    refs.publishBtn.textContent = busy ? t("menu.saving") : t("menu.publish");
   }
 
-  // Produce a clean payload: strip empty translations/arrays and computed
-  // image fields (e.g. the server-side `Link`).
   function sanitize(menu) {
     var out = {
       Id: menu.Id || uuid(),

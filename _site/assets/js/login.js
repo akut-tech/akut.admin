@@ -2,7 +2,6 @@
 (function () {
   "use strict";
 
-  // If a valid session already exists, skip the form.
   AkutAuth.redirectIfAuthed();
 
   var form = document.getElementById("loginForm");
@@ -21,7 +20,7 @@
 
   function setLoading(loading) {
     button.disabled = loading;
-    button.textContent = loading ? "Signing in…" : "Sign in";
+    button.textContent = loading ? t("login.submitting") : t("login.submit");
   }
 
   function nextUrl() {
@@ -38,7 +37,7 @@
     var username = document.getElementById("username").value.trim();
     var password = document.getElementById("password").value;
     if (!username || !password) {
-      showError("Please enter both username and password.");
+      showError(t("login.errorEmpty"));
       return;
     }
 
@@ -48,7 +47,7 @@
         window.location.href = nextUrl();
       })
       .catch(function (err) {
-        showError(err.message || "Sign-in failed. Please try again.");
+        showError(err.message || t("login.errorFailed"));
         setLoading(false);
       });
   });
