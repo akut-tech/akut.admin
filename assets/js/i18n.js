@@ -110,6 +110,8 @@
       "menu.categoryN": "Category {n}",
       "menu.itemN": "Item {n}",
 
+      "tenant.adminRequired": "Admin access required",
+      "tenant.adminRequiredDesc": "Tenant management is restricted to administrators.",
       "tenant.status": "Tenant status",
       "tenant.statusDesc": "Disabling a tenant hides its menu from customers. This is an admin operation.",
       "tenant.enable": "Enable tenant",
@@ -229,6 +231,8 @@
       "menu.categoryN": "Categoria {n}",
       "menu.itemN": "Item {n}",
 
+      "tenant.adminRequired": "Acesso de administrador necessário",
+      "tenant.adminRequiredDesc": "O gerenciamento de tenant é restrito a administradores.",
       "tenant.status": "Status do tenant",
       "tenant.statusDesc": "Desativar um tenant oculta seu cardápio dos clientes. Esta é uma operação de administrador.",
       "tenant.enable": "Ativar tenant",

@@ -9,7 +9,14 @@ app_scripts:
   - /assets/js/api.js
   - /assets/js/tenant.js
 ---
-<section class="card">
+<section class="card" id="tenantDenied" hidden>
+  <p class="alert alert-error" style="margin:0">
+    <strong data-i18n="tenant.adminRequired">Admin access required</strong><br>
+    <span data-i18n="tenant.adminRequiredDesc">Tenant management is restricted to administrators.</span>
+  </p>
+</section>
+
+<section class="card" id="tenantCard">
   <div class="status-row">
     <div>
       <h2 data-i18n="tenant.status">Tenant status</h2>

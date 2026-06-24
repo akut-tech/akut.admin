@@ -43,6 +43,10 @@
       var active = document.querySelector('.nav-link[data-nav="' + key + '"]');
       if (active) active.classList.add('is-active');
     }
+    if (!AkutAuth.isAdmin()) {
+      var tenantLink = document.querySelector('.nav-link[data-nav="tenant"]');
+      if (tenantLink) tenantLink.hidden = true;
+    }
     document.addEventListener('DOMContentLoaded', AkutAuth.renderUserCard);
   })();
 </script>
