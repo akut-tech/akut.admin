@@ -1,4 +1,5 @@
-<aside class="sidebar">
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar" id="sidebar">
   <div class="brand">
     <span class="brand-mark">🍽️</span>
     <span class="brand-name" data-i18n="nav.brand">Akut Admin</span>
@@ -32,5 +33,33 @@
       if (tenantLink) tenantLink.hidden = true;
     }
     document.addEventListener('DOMContentLoaded', AkutAuth.renderUserCard);
+  })();
+</script>
+<script>
+  (function () {
+    var sidebar = document.getElementById('sidebar');
+    var overlay = document.getElementById('sidebarOverlay');
+    var toggle  = document.getElementById('sidebarToggle');
+
+    function openSidebar() {
+      sidebar.classList.add('is-open');
+      overlay.classList.add('is-open');
+      if (toggle) toggle.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove('is-open');
+      overlay.classList.remove('is-open');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    }
+
+    if (toggle)  toggle.addEventListener('click', openSidebar);
+    if (overlay) overlay.addEventListener('click', closeSidebar);
+
+    document.querySelectorAll('.nav-link').forEach(function (link) {
+      link.addEventListener('click', closeSidebar);
+    });
   })();
 </script>
