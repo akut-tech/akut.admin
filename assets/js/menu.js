@@ -13,6 +13,8 @@
     return { value: Number(k), name: E.language[k] };
   });
 
+  var TEMPLATE_PRESETS = ["default", "epicurean", "deepblue", "senjutsu", "lisbon"];
+
   var state = {
     status: "Active",
     menu: null,
@@ -173,8 +175,8 @@
 
     root.appendChild(card(t("menu.details"), [
       grid2([
-        textField(t("menu.templateId"), m.TemplateId, function (v) { m.TemplateId = v; },
-          { required: true, placeholder: t("menu.templateIdPlaceholder") }),
+        comboField(t("menu.templateId"), m.TemplateId, TEMPLATE_PRESETS, function (v) { m.TemplateId = v; },
+          { required: true, placeholder: t("menu.templateIdPlaceholder"), help: t("menu.templateIdHelp") }),
         selectField(t("menu.defaultLanguage"), m.DefaultLanguage, E.language, function (v) {
           m.DefaultLanguage = Number(v);
         })
@@ -320,6 +322,25 @@
       oninput: function (e) { onChange(e.target.value); }
     });
     return field(label + (opts.required ? " *" : ""), input);
+  }
+
+  function comboField(label, value, options, onChange, opts) {
+    opts = opts || {};
+    var listId = "combo-" + label.replace(/[^a-z]/gi, "").toLowerCase();
+    var input = h("input", {
+      type: "text", value: value || "", placeholder: opts.placeholder || "",
+      list: listId,
+      oninput: function (e) { onChange(e.target.value); }
+    });
+    var datalist = h("datalist", { id: listId },
+      options.map(function (o) { return h("option", { value: o }); })
+    );
+    // datalist must be a sibling of the label, not nested inside it —
+    // browsers (especially Safari) won't connect it to the input otherwise.
+    return h("div", null, [
+      field(label + (opts.required ? " *" : ""), input, opts.help),
+      datalist
+    ]);
   }
 
   function numberField(label, value, onChange) {
