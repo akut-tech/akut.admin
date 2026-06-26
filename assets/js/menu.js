@@ -146,6 +146,8 @@
     if (view === "json") {
       refs.jsonArea.value = JSON.stringify(sanitize(state.menu), null, 2);
       refs.jsonStatus.textContent = "";
+    } else {
+      renderForm();
     }
     showOnly("editor");
   }
@@ -154,8 +156,7 @@
     try {
       var parsed = JSON.parse(refs.jsonArea.value);
       state.menu = normalize(parsed);
-      refs.jsonStatus.textContent = t("menu.jsonApplied");
-      refs.jsonStatus.className = "field-saved";
+      switchView("form");
     } catch (e) {
       refs.jsonStatus.textContent = t("menu.jsonInvalid", { msg: e.message });
       refs.jsonStatus.className = "field-saved field-error";
