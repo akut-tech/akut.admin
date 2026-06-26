@@ -4,18 +4,21 @@
   var refs = {};
 
   document.addEventListener("DOMContentLoaded", function () {
-    refs.alert      = document.getElementById("listAlert");
-    refs.loading    = document.getElementById("listLoading");
-    refs.empty      = document.getElementById("listEmpty");
-    refs.root       = document.getElementById("menuListRoot");
-    refs.newMenuBtn = document.getElementById("newMenuBtn");
-    refs.listView   = document.getElementById("listView");
-    refs.editorView = document.getElementById("editorView");
+    refs.alert          = document.getElementById("listAlert");
+    refs.loading        = document.getElementById("listLoading");
+    refs.empty          = document.getElementById("listEmpty");
+    refs.root           = document.getElementById("menuListRoot");
+    refs.newMenuBtn     = document.getElementById("newMenuBtn");
+    refs.refreshListBtn = document.getElementById("refreshListBtn");
+    refs.listView       = document.getElementById("listView");
+    refs.editorView     = document.getElementById("editorView");
 
     refs.newMenuBtn.addEventListener("click", function () {
       showEditorView();
       window.MenuEditor.newMenu("Draft");
     });
+
+    refs.refreshListBtn.addEventListener("click", loadMetadata);
 
     // Expose list-view controls so the editor can navigate back
     window.MenuList = { showListView: showListView };
