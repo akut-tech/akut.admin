@@ -137,6 +137,7 @@
       Id: uuid(),
       Logo: null,
       Name: {},
+      AvailabilityTime: null,
       Description: null,
       Notes: null,
       TemplateId: "",
@@ -215,6 +216,9 @@
         selectField(t("menu.currency"), m.Currency, E.currency, function (v) { m.Currency = Number(v); }),
         textField(t("menu.notes"), m.Notes || "", function (v) { m.Notes = v || null; })
       ]),
+      availabilityTimeField(t("menu.availabilityTime"), m.AvailabilityTime, function (avail) {
+        m.AvailabilityTime = avail;
+      }),
       translationsField(t("menu.name"), m.Name, function (tr) { m.Name = tr; }),
       translationsField(t("menu.description"), m.Description || {}, function (tr) {
         m.Description = isEmptyTranslations(tr) ? null : tr;
@@ -420,6 +424,52 @@
       h("span", { class: "field-label" }, [label]),
       h("div", { class: "trans-grid" }, inputs)
     ]);
+  }
+
+  function availabilityTimeField(label, avail, onChange) {
+    var current = {
+      From: avail && avail.From != null ? avail.From : null,
+      To:   avail && avail.To   != null ? avail.To   : null
+    };
+
+    function update() {
+      onChange(current.From == null && current.To == null ? null : current);
+    }
+
+    function makeInput(which) {
+      var hourVal = current[which] != null ? hourFromTimeOnly(current[which]) : "";
+      return h("input", {
+        type: "number",
+        value: hourVal === "" ? "" : String(hourVal),
+        min: "0", max: "24", step: "1",
+        placeholder: "—",
+        oninput: function (e) {
+          var v = e.target.value.trim();
+          current[which] = v !== "" ? hourToTimeOnly(parseInt(v, 10)) : null;
+          update();
+        }
+      });
+    }
+
+    return h("div", { class: "field" }, [
+      h("span", { class: "field-label" }, [label]),
+      h("div", { class: "grid grid-2 tight" }, [
+        field(t("menu.availabilityTimeFrom"), makeInput("From")),
+        field(t("menu.availabilityTimeTo"), makeInput("To"))
+      ])
+    ]);
+  }
+
+  function hourFromTimeOnly(str) {
+    if (str == null) return "";
+    var n = parseInt(String(str).split(":")[0], 10);
+    return isNaN(n) ? "" : n;
+  }
+
+  function hourToTimeOnly(h) {
+    if (h == null || isNaN(h)) return null;
+    var hh = Math.max(0, Math.min(24, h));
+    return (hh < 10 ? "0" : "") + hh + ":00:00";
   }
 
   function dietsField(item) {
@@ -633,10 +683,14 @@
   }
 
   function sanitize(menu) {
+    var avail = menu.AvailabilityTime;
     return {
       Id: menu.Id || uuid(),
       Logo: cleanImage(menu.Logo),
       Name: cleanTranslations(menu.Name),
+      AvailabilityTime: (avail && (avail.From != null || avail.To != null))
+        ? { From: avail.From || null, To: avail.To || null }
+        : null,
       Description: cleanTranslationsOrNull(menu.Description),
       Notes: menu.Notes || null,
       TemplateId: menu.TemplateId || "",
