@@ -19,6 +19,10 @@
     view: "form"
   };
 
+  // Tracks which accordion IDs are open so renderForm() can restore them
+  var openCats  = {};
+  var openItems = {};
+
   var refs = {};
   document.addEventListener("DOMContentLoaded", function () {
     [
@@ -228,7 +232,10 @@
           }
         })
       ],
-      body
+      body,
+      false,
+      cat.Id,
+      openCats
     );
   }
 
@@ -283,7 +290,9 @@
         })
       ],
       body,
-      true
+      true,
+      item.Id,
+      openItems
     );
   }
 
@@ -498,15 +507,16 @@
     ]);
   }
 
-  function accordion(title, actions, body, nested) {
-    var open = false;
-    var bodyWrap = h("div", { class: "accordion-content", hidden: true }, [body]);
-    var caret = h("span", { class: "caret" }, ["▸"]);
+  function accordion(title, actions, body, nested, id, openMap) {
+    var open = !!(id && openMap && openMap[id]);
+    var bodyWrap = h("div", { class: "accordion-content", hidden: !open }, [body]);
+    var caret = h("span", { class: "caret" }, [open ? "▾" : "▸"]);
     var header = h("div", { class: "accordion-header" }, [
       h("button", {
         type: "button", class: "accordion-toggle",
         onclick: function () {
           open = !open;
+          if (id && openMap) openMap[id] = open;
           bodyWrap.hidden = !open;
           caret.textContent = open ? "▾" : "▸";
         }

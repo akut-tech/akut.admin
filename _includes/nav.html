@@ -39,11 +39,11 @@
   (function () {
     var sidebar = document.getElementById('sidebar');
     var overlay = document.getElementById('sidebarOverlay');
-    var toggle  = document.getElementById('sidebarToggle');
 
     function openSidebar() {
       sidebar.classList.add('is-open');
       overlay.classList.add('is-open');
+      var toggle = document.getElementById('sidebarToggle');
       if (toggle) toggle.setAttribute('aria-expanded', 'true');
       document.body.style.overflow = 'hidden';
     }
@@ -51,15 +51,21 @@
     function closeSidebar() {
       sidebar.classList.remove('is-open');
       overlay.classList.remove('is-open');
+      var toggle = document.getElementById('sidebarToggle');
       if (toggle) toggle.setAttribute('aria-expanded', 'false');
       document.body.style.overflow = '';
     }
 
-    if (toggle)  toggle.addEventListener('click', openSidebar);
     if (overlay) overlay.addEventListener('click', closeSidebar);
 
     document.querySelectorAll('.nav-link').forEach(function (link) {
       link.addEventListener('click', closeSidebar);
+    });
+
+    // sidebarToggle lives in app.html (after this include), so bind after full DOM is ready
+    document.addEventListener('DOMContentLoaded', function () {
+      var toggle = document.getElementById('sidebarToggle');
+      if (toggle) toggle.addEventListener('click', openSidebar);
     });
   })();
 </script>
