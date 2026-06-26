@@ -66,22 +66,24 @@
 
   function renderMenuItem(item, status) {
     var updatedAt = formatDate(item.UpdatedAt);
-    var tenant = AkutApi.getSubTenant();
-    var publishedUrl = "https://menu.akut.pt/" + encodeURIComponent(tenant) + "/" + encodeURIComponent(item.Id);
-    var viewLink = h("a", {
-      "class": "btn btn-ghost btn-sm",
-      href: publishedUrl,
-      target: "_blank",
-      rel: "noopener noreferrer",
-      onclick: function (e) { e.stopPropagation(); }
-    }, [t("menu.list.viewPublished")]);
+    var metaChildren = [
+      h("span", null, [t("menu.list.updatedBy") + ": " + item.UpdatedBy]),
+      h("span", { "class": "menu-item-date" }, [updatedAt])
+    ];
+    if (status === "Active") {
+      var tenant = AkutApi.getSubTenant();
+      var publishedUrl = "https://menu.akut.pt/" + encodeURIComponent(tenant) + "/" + encodeURIComponent(item.Id);
+      metaChildren.unshift(h("a", {
+        "class": "btn btn-ghost btn-sm",
+        href: publishedUrl,
+        target: "_blank",
+        rel: "noopener noreferrer",
+        onclick: function (e) { e.stopPropagation(); }
+      }, [t("menu.list.viewPublished")]));
+    }
     var el = h("div", { "class": "menu-list-item", role: "button", tabindex: "0" }, [
       h("div", { "class": "menu-item-name" }, [item.Name]),
-      viewLink,
-      h("div", { "class": "menu-item-meta" }, [
-        h("span", null, [t("menu.list.updatedBy") + ": " + item.UpdatedBy]),
-        h("span", { "class": "menu-item-date" }, [updatedAt])
-      ])
+      h("div", { "class": "menu-item-meta" }, metaChildren)
     ]);
     function open() {
       showEditorView();
