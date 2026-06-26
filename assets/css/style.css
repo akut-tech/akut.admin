@@ -328,6 +328,25 @@ textarea { resize: vertical; }
   font-size: 13px; line-height: 1.5; margin-bottom: 12px;
 }
 
+/* ---------- Menu listing ---------- */
+.menu-group-header { margin-bottom: 14px; }
+.menu-group-header h2 { font-size: 15px; margin: 0; }
+.menu-list { display: flex; flex-direction: column; gap: 2px; }
+.menu-list-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 14px; border-radius: var(--radius-sm);
+  color: var(--text); cursor: pointer;
+  border: 1px solid transparent;
+  transition: background .15s, border-color .15s;
+}
+.menu-list-item:hover, .menu-list-item:focus {
+  background: var(--surface-2); border-color: var(--border); outline: none;
+}
+.menu-item-name { font-weight: 600; font-size: 14px; }
+.menu-item-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.menu-item-meta span { color: var(--muted); font-size: 12px; }
+.menu-item-date { color: var(--muted); }
+
 /* ---------- Language switcher ---------- */
 .lang-switcher { display: flex; gap: 4px; margin-bottom: 10px; }
 .lang-btn {

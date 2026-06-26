@@ -3,7 +3,7 @@
 <head>
   {% include head.html %}
 </head>
-<body class="layout-app" data-page="{{ page.nav_key }}">
+<body class="layout-app" data-page="{{ page.nav_key }}" data-page-i18n="{{ page.page_key | default: page.nav_key }}">
   {% include nav.html %}
   <main class="app-main">
     <div class="mobile-topbar">

@@ -13,7 +13,7 @@
 <script src="/assets/js/auth.js"></script>
 
 </head>
-<body class="layout-app" data-page="menu">
+<body class="layout-app" data-page="menu" data-page-i18n="menu">
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 <aside class="sidebar" id="sidebar">
   <div class="brand">
@@ -94,53 +94,60 @@
     </div>
     <header class="page-header">
       <div class="page-header-row">
-        <h1>Menu editor</h1>
+        <h1>Menus</h1>
         <span class="tenant-tag" id="pageHeaderTenant" hidden></span>
       </div>
-      <p class="page-sub">Edit the active menu or work on a draft</p>
+      <p class="page-sub">Select a menu to edit or create a new one</p>
     </header>
     <div class="page-body">
-      <div class="toolbar">
-  <div class="toolbar-group">
-    <label class="field-inline">
-      <span class="field-label" data-i18n="menu.editing">Editing</span>
-      <select id="statusSelect">
-        <option value="Active" data-i18n="menu.activeMenu">Active menu</option>
-        <option value="Draft" data-i18n="menu.draft">Draft</option>
-      </select>
-    </label>
-    <button type="button" class="btn btn-secondary" id="loadBtn" data-i18n="menu.load">Load</button>
-    <button type="button" class="btn btn-ghost" id="newBtn" data-i18n="menu.newMenu">New menu</button>
+      <!-- ── List view ───────────────────────────────────────────────── -->
+<div id="listView">
+  <div class="toolbar">
+    <button type="button" class="btn btn-primary" id="newMenuBtn" data-i18n="menu.list.newMenu">New menu</button>
   </div>
+  <div id="listAlert" class="alert" hidden></div>
+  <div id="listLoading" class="empty-state" hidden data-i18n="menu.list.loading">Loading…</div>
+  <div id="listEmpty"   class="empty-state" hidden data-i18n="menu.list.empty">No menus found.</div>
+  <div id="menuListRoot" hidden></div>
+</div>
 
-  <div class="toolbar-group">
-    <div class="segmented">
-      <button type="button" class="seg is-active" id="formTab" data-i18n="menu.form">Form</button>
-      <button type="button" class="seg" id="jsonTab" data-i18n="menu.json">JSON</button>
+<!-- ── Editor view (hidden until a menu is selected) ───────────── -->
+<div id="editorView" hidden>
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <button type="button" class="btn btn-ghost btn-sm" id="backToListBtn" data-i18n="menu.backToList">← Menus</button>
+      <label class="field-inline">
+        <span class="field-label" data-i18n="menu.editing">Editing</span>
+        <select id="statusSelect">
+          <option value="Active" data-i18n="menu.activeMenu">Active menu</option>
+          <option value="Draft" data-i18n="menu.draft">Draft</option>
+        </select>
+      </label>
+      <button type="button" class="btn btn-secondary" id="loadBtn" data-i18n="menu.load">Reload</button>
+      <button type="button" class="btn btn-ghost" id="newEditorBtn" data-i18n="menu.newMenu">New menu</button>
     </div>
-    <button type="button" class="btn btn-secondary" id="saveDraftBtn" data-i18n="menu.saveDraft">Save as draft</button>
-    <button type="button" class="btn btn-primary" id="publishBtn" data-i18n="menu.publish">Publish (Active)</button>
+    <div class="toolbar-group">
+      <div class="segmented">
+        <button type="button" class="seg is-active" id="formTab" data-i18n="menu.form">Form</button>
+        <button type="button" class="seg" id="jsonTab" data-i18n="menu.json">JSON</button>
+      </div>
+      <button type="button" class="btn btn-secondary" id="saveDraftBtn" data-i18n="menu.saveDraft">Save as draft</button>
+      <button type="button" class="btn btn-primary" id="publishBtn" data-i18n="menu.publish">Publish (Active)</button>
+    </div>
   </div>
-</div>
 
-<div id="menuAlert" class="alert" hidden></div>
+  <div id="menuAlert" class="alert" hidden></div>
+  <div id="editorLoading" class="empty-state" hidden data-i18n="menu.loading">Loading…</div>
+  <div id="editorEmpty"   class="empty-state" hidden data-i18n-html="menu.empty">No menu loaded.</div>
+  <div id="editorRoot" hidden></div>
 
-<div id="loadingState" class="empty-state" hidden data-i18n="menu.loading">Loading…</div>
-
-<div id="emptyState" class="empty-state" hidden data-i18n-html="menu.empty">
-  No menu loaded.
-</div>
-
-<!-- Form editor -->
-<div id="editorRoot" hidden></div>
-
-<!-- Raw JSON editor -->
-<div id="jsonRoot" class="card" hidden>
-  <p class="field-help" data-i18n-html="menu.jsonHelp" data-i18n-vars='{"path":"/menu"}'></p>
-  <textarea id="jsonArea" class="json-area" spellcheck="false"></textarea>
-  <div class="inline-controls">
-    <button type="button" class="btn btn-secondary" id="jsonApply" data-i18n="menu.applyToForm">Apply to form</button>
-    <span class="field-saved" id="jsonStatus"></span>
+  <div id="jsonRoot" class="card" hidden>
+    <p class="field-help" data-i18n-html="menu.jsonHelp" data-i18n-vars='{"path":"/menu"}'></p>
+    <textarea id="jsonArea" class="json-area" spellcheck="false"></textarea>
+    <div class="inline-controls">
+      <button type="button" class="btn btn-secondary" id="jsonApply" data-i18n="menu.applyToForm">Apply to form</button>
+      <span class="field-saved" id="jsonStatus"></span>
+    </div>
   </div>
 </div>
 
@@ -151,6 +158,8 @@
   
     
       <script src="/assets/js/api.js"></script>
+    
+      <script src="/assets/js/menu-list.js"></script>
     
       <script src="/assets/js/menu.js"></script>
     

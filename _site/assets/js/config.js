@@ -2,6 +2,7 @@
 window.AKUT_CONFIG = {
   apiBaseUrl: "https://zk5hanxapf.execute-api.eu-west-1.amazonaws.com",
   menuPath: "/menu",
+  menuMetadataPath: "/menu/metadata",
   tenantPath: "/tenant",
   cognito: {
     region: "eu-west-1",

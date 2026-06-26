@@ -7,6 +7,7 @@
 window.AKUT_CONFIG = {
   apiBaseUrl: {{ site.akut.api_base_url | jsonify }},
   menuPath: {{ site.akut.menu_path | jsonify }},
+  menuMetadataPath: {{ site.akut.menu_metadata_path | jsonify }},
   tenantPath: {{ site.akut.tenant_path | jsonify }},
   cognito: {
     region: {{ site.akut.cognito_region | jsonify }},

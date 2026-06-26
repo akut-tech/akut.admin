@@ -16,6 +16,7 @@
   var TEMPLATE_PRESETS = ["default", "epicurean", "deepblue", "senjutsu", "lisbon"];
 
   var state = {
+    menuId: null,
     status: "Active",
     menu: null,
     view: "form"
@@ -27,11 +28,23 @@
 
   var refs = {};
   document.addEventListener("DOMContentLoaded", function () {
-    [
-      "statusSelect", "loadBtn", "newBtn", "formTab", "jsonTab",
-      "saveDraftBtn", "publishBtn", "menuAlert", "loadingState", "emptyState",
-      "editorRoot", "jsonRoot", "jsonArea", "jsonApply", "jsonStatus"
-    ].forEach(function (id) { refs[id] = document.getElementById(id); });
+    // Map logical ref names to the actual DOM element IDs used in menu.html
+    refs.statusSelect  = document.getElementById("statusSelect");
+    refs.loadBtn       = document.getElementById("loadBtn");
+    refs.newBtn        = document.getElementById("newEditorBtn");
+    refs.formTab       = document.getElementById("formTab");
+    refs.jsonTab       = document.getElementById("jsonTab");
+    refs.saveDraftBtn  = document.getElementById("saveDraftBtn");
+    refs.publishBtn    = document.getElementById("publishBtn");
+    refs.menuAlert     = document.getElementById("menuAlert");
+    refs.loadingState  = document.getElementById("editorLoading");
+    refs.emptyState    = document.getElementById("editorEmpty");
+    refs.editorRoot    = document.getElementById("editorRoot");
+    refs.jsonRoot      = document.getElementById("jsonRoot");
+    refs.jsonArea      = document.getElementById("jsonArea");
+    refs.jsonApply     = document.getElementById("jsonApply");
+    refs.jsonStatus    = document.getElementById("jsonStatus");
+    refs.backToListBtn = document.getElementById("backToListBtn");
 
     refs.loadBtn.addEventListener("click", load);
     refs.newBtn.addEventListener("click", newMenu);
@@ -40,8 +53,28 @@
     refs.formTab.addEventListener("click", function () { switchView("form"); });
     refs.jsonTab.addEventListener("click", function () { switchView("json"); });
     refs.jsonApply.addEventListener("click", applyJson);
+    refs.backToListBtn.addEventListener("click", function () {
+      window.MenuList && window.MenuList.showListView();
+    });
 
-    load();
+    // Expose editor API — called by menu-list.js on item click or "New menu"
+    window.MenuEditor = {
+      open: function (menuId, status) {
+        state.menuId = menuId;
+        state.status = status || "Active";
+        state.menu   = null;
+        state.view   = "form";
+        openCats  = {};
+        openItems = {};
+        refs.statusSelect.value = state.status;
+        load();
+      },
+      newMenu: function (status) {
+        state.status = status || "Draft";
+        refs.statusSelect.value = state.status;
+        newMenu();
+      }
+    };
   });
 
   // ---- Tiny DOM helper ----------------------------------------------------
@@ -85,13 +118,9 @@
     clearAlert();
     state.status = refs.statusSelect.value;
     showOnly("loading");
-    AkutApi.getMenu(state.status)
+    AkutApi.getMenu(state.menuId, state.status)
       .then(function (menu) {
-        if (!menu) {
-          state.menu = null;
-          showOnly("empty");
-          return;
-        }
+        if (!menu) { state.menu = null; showOnly("empty"); return; }
         state.menu = normalize(menu);
         render();
       })
@@ -103,7 +132,7 @@
 
   function newMenu() {
     clearAlert();
-    state.status = refs.statusSelect.value;
+    state.menuId = null;
     state.menu = {
       Id: uuid(),
       Logo: null,
@@ -131,10 +160,10 @@
 
   function showOnly(which) {
     refs.loadingState.hidden = which !== "loading";
-    refs.emptyState.hidden = which !== "empty";
+    refs.emptyState.hidden   = which !== "empty";
     var hasEditor = which === "editor";
     refs.editorRoot.hidden = !(hasEditor && state.view === "form");
-    refs.jsonRoot.hidden = !(hasEditor && state.view === "json");
+    refs.jsonRoot.hidden   = !(hasEditor && state.view === "json");
   }
 
   // ---- View switching -----------------------------------------------------
@@ -230,15 +259,10 @@
         iconButton("↑", t("menu.moveUp"), function () { move(m.Categories, ci, -1); renderForm(); }),
         iconButton("↓", t("menu.moveDown"), function () { move(m.Categories, ci, 1); renderForm(); }),
         iconButton("✕", t("menu.removeCategory"), function () {
-          if (confirm(t("menu.confirmRemoveCategory"))) {
-            m.Categories.splice(ci, 1); renderForm();
-          }
+          if (confirm(t("menu.confirmRemoveCategory"))) { m.Categories.splice(ci, 1); renderForm(); }
         })
       ],
-      body,
-      false,
-      cat.Id,
-      openCats
+      body, false, cat.Id, openCats
     );
   }
 
@@ -292,10 +316,7 @@
           if (confirm(t("menu.confirmRemoveItem"))) { cat.Items.splice(ii, 1); renderForm(); }
         })
       ],
-      body,
-      true,
-      item.Id,
-      openItems
+      body, true, item.Id, openItems
     );
   }
 
@@ -581,9 +602,7 @@
   // ---- Save ---------------------------------------------------------------
   function save(targetStatus) {
     if (!state.menu) { alert("error", t("menu.errorNothingToSave")); return; }
-    if (state.view === "json") {
-      applyJson();
-    }
+    if (state.view === "json") applyJson();
     clearAlert();
     var payload = sanitize(state.menu);
     payload.Status = targetStatus === "Draft" ? 2 : 1;
@@ -614,7 +633,7 @@
   }
 
   function sanitize(menu) {
-    var out = {
+    return {
       Id: menu.Id || uuid(),
       Logo: cleanImage(menu.Logo),
       Name: cleanTranslations(menu.Name),
@@ -651,17 +670,11 @@
         };
       })
     };
-    return out;
   }
 
   function cleanImage(img) {
     if (!img || !img.Url) return null;
-    return {
-      Order: intOr(img.Order, 0),
-      Url: img.Url,
-      Title: img.Title || null,
-      Source: Number(img.Source) || 0
-    };
+    return { Order: intOr(img.Order, 0), Url: img.Url, Title: img.Title || null, Source: Number(img.Source) || 0 };
   }
 
   function cleanImages(images) {
@@ -671,9 +684,7 @@
 
   function cleanTranslations(trans) {
     var out = {};
-    Object.keys(trans || {}).forEach(function (k) {
-      if (trans[k]) out[k] = trans[k];
-    });
+    Object.keys(trans || {}).forEach(function (k) { if (trans[k]) out[k] = trans[k]; });
     return out;
   }
 

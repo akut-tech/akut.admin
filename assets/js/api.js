@@ -93,9 +93,15 @@
 
   // ---- Menu ---------------------------------------------------------------
 
-  function getMenu(status) {
+  function getMenuMetadata() {
+    return request(cfg().menuMetadataPath, { method: "GET" })
+      .then(function (res) { return res.json(); });
+  }
+
+  function getMenu(menuId, status) {
+    var id = encodeURIComponent(menuId);
     var s = encodeURIComponent(status || "Active");
-    return request(cfg().menuPath + "?status=" + s, { method: "GET" })
+    return request(cfg().menuPath + "?menuId=" + id + "&status=" + s, { method: "GET" })
       .then(function (res) { return res.json(); })
       .then(function (menu) {
         // The API returns "{}" when no menu exists for the tenant/status.
@@ -124,6 +130,7 @@
   }
 
   window.AkutApi = {
+    getMenuMetadata: getMenuMetadata,
     getMenu: getMenu,
     saveMenu: saveMenu,
     setTenantStatus: setTenantStatus,

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Dashboard · Akut Admin</title>
+<title>Menu Editor · Akut Admin</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
 <link rel="stylesheet" href="/assets/css/style.css">
 <!-- App config is generated from _config.yml -> assets/js/config.js -->
@@ -13,7 +13,7 @@
 <script src="/assets/js/auth.js"></script>
 
 </head>
-<body class="layout-app" data-page="dashboard" data-page-i18n="dashboard">
+<body class="layout-app" data-page="menu" data-page-i18n="menu-edit">
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 <aside class="sidebar" id="sidebar">
   <div class="brand">
@@ -94,50 +94,56 @@
     </div>
     <header class="page-header">
       <div class="page-header-row">
-        <h1>Dashboard</h1>
-        
+        <h1>Menu editor</h1>
+        <span class="tenant-tag" id="pageHeaderTenant" hidden></span>
       </div>
-      <p class="page-sub">Manage your Akut menu and tenant status</p>
+      <p class="page-sub">Edit the active menu or work on a draft</p>
     </header>
     <div class="page-body">
-      <div class="grid grid-2">
-  <a class="card card-link" href="/menu/">
-    <div class="card-icon">📋</div>
-    <h2 data-i18n="dashboard.cardMenu.title">Menu</h2>
-    <p data-i18n="dashboard.cardMenu.desc">View and edit the active menu, work on a draft, and publish changes.</p>
-    <span class="card-cta" data-i18n="dashboard.cardMenu.cta">Open menu editor →</span>
-  </a>
+      <div class="toolbar">
+  <div class="toolbar-group">
+    <a class="btn btn-ghost btn-sm" href="/menu/" data-i18n="menu.backToList">← Menus</a>
+    <label class="field-inline">
+      <span class="field-label" data-i18n="menu.editing">Editing</span>
+      <select id="statusSelect">
+        <option value="Active" data-i18n="menu.activeMenu">Active menu</option>
+        <option value="Draft" data-i18n="menu.draft">Draft</option>
+      </select>
+    </label>
+    <button type="button" class="btn btn-secondary" id="loadBtn" data-i18n="menu.load">Load</button>
+    <button type="button" class="btn btn-ghost" id="newBtn" data-i18n="menu.newMenu">New menu</button>
+  </div>
 
-  <a class="card card-link" href="/tenant/">
-    <div class="card-icon">🏢</div>
-    <h2 data-i18n="dashboard.cardTenant.title">Tenant</h2>
-    <p data-i18n="dashboard.cardTenant.desc">Enable or disable the tenant. Disabling hides the menu from customers.</p>
-    <span class="card-cta" data-i18n="dashboard.cardTenant.cta">Manage tenant →</span>
-  </a>
+  <div class="toolbar-group">
+    <div class="segmented">
+      <button type="button" class="seg is-active" id="formTab" data-i18n="menu.form">Form</button>
+      <button type="button" class="seg" id="jsonTab" data-i18n="menu.json">JSON</button>
+    </div>
+    <button type="button" class="btn btn-secondary" id="saveDraftBtn" data-i18n="menu.saveDraft">Save as draft</button>
+    <button type="button" class="btn btn-primary" id="publishBtn" data-i18n="menu.publish">Publish (Active)</button>
+  </div>
 </div>
 
-<section class="card" id="contextCard">
-  <h2 data-i18n="dashboard.session.title">Session</h2>
-  <dl class="def-list">
-    <div><dt data-i18n="dashboard.session.signedInAs">Signed in as</dt><dd id="ctxUser">—</dd></div>
-    <div><dt data-i18n="dashboard.session.email">Email</dt><dd id="ctxEmail">—</dd></div>
-    <div><dt data-i18n="dashboard.session.role">Role</dt><dd id="ctxRole">—</dd></div>
-    <div><dt data-i18n="dashboard.session.tenant">Tenant</dt><dd id="ctxTenant">—</dd></div>
-  </dl>
+<div id="menuAlert" class="alert" hidden></div>
 
-  <div id="subTenantBlock" hidden>
-    <hr class="divider">
-    <label class="field">
-      <span class="field-label" data-i18n="dashboard.subTenant.label">Target sub-tenant</span>
-      <p class="field-help" data-i18n-html="dashboard.subTenant.help">Choose which sub-tenant your requests apply to.</p>
-      <div class="inline-controls">
-        <select id="subTenantSelect"></select>
-        <button type="button" class="btn btn-secondary" id="subTenantSave" data-i18n="dashboard.subTenant.save">Save</button>
-      </div>
-      <span class="field-saved" id="subTenantSaved" hidden data-i18n="dashboard.subTenant.saved">Saved ✓</span>
-    </label>
+<div id="loadingState" class="empty-state" hidden data-i18n="menu.loading">Loading…</div>
+
+<div id="emptyState" class="empty-state" hidden data-i18n-html="menu.empty">
+  No menu selected.
+</div>
+
+<!-- Form editor -->
+<div id="editorRoot" hidden></div>
+
+<!-- Raw JSON editor -->
+<div id="jsonRoot" class="card" hidden>
+  <p class="field-help" data-i18n-html="menu.jsonHelp" data-i18n-vars='{"path":"/menu"}'></p>
+  <textarea id="jsonArea" class="json-area" spellcheck="false"></textarea>
+  <div class="inline-controls">
+    <button type="button" class="btn btn-secondary" id="jsonApply" data-i18n="menu.applyToForm">Apply to form</button>
+    <span class="field-saved" id="jsonStatus"></span>
   </div>
-</section>
+</div>
 
     </div>
   </main>
@@ -147,9 +153,23 @@
     
       <script src="/assets/js/api.js"></script>
     
-      <script src="/assets/js/dashboard.js"></script>
+      <script src="/assets/js/menu.js"></script>
     
   
+  
+  <script>
+    (function () {
+      var el = document.getElementById('pageHeaderTenant');
+      if (!el) return;
+      var c = AkutAuth.claims();
+      var tenant = (window.AkutApi && AkutApi.getSubTenant()) ||
+        (c && c['custom:tenant']) || '';
+      if (tenant) {
+        el.textContent = tenant;
+        el.hidden = false;
+      }
+    })();
+  </script>
   
 </body>
 </html>

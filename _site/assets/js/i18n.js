@@ -23,8 +23,12 @@
 
       "page.dashboard.heading": "Dashboard",
       "page.dashboard.subheading": "Manage your Akut menu and tenant status",
-      "page.menu.heading": "Menu editor",
-      "page.menu.subheading": "Edit the active menu or work on a draft",
+      "page.menu.heading": "Menus",
+      "page.menu.subheading": "Select a menu to edit or create a new one",
+      "page.menu-list.heading": "Menus",
+      "page.menu-list.subheading": "Select a menu to edit or create a new one",
+      "page.menu-edit.heading": "Menu editor",
+      "page.menu-edit.subheading": "Edit the active menu or work on a draft",
       "page.tenant.heading": "Tenant",
       "page.tenant.subheading": "Enable or disable this tenant",
 
@@ -51,12 +55,22 @@
       "menu.draft": "Draft",
       "menu.load": "Load",
       "menu.newMenu": "New menu",
+      "menu.backToList": "← Menus",
       "menu.form": "Form",
       "menu.json": "JSON",
       "menu.saveDraft": "Save as draft",
       "menu.publish": "Publish (Active)",
       "menu.loading": "Loading…",
-      "menu.empty": "No menu loaded. Choose <strong>Active menu</strong> or <strong>Draft</strong> and press <strong>Load</strong>, or start a <strong>New menu</strong>.",
+      "menu.empty": "No menu selected. Return to the menu list and choose a menu to edit, or create a <strong>New menu</strong>.",
+      "menu.list.loading": "Loading menus…",
+      "menu.list.empty": "No menus found.",
+      "menu.list.errorLoad": "Failed to load menu list.",
+      "menu.list.newMenu": "New menu",
+      "menu.list.status.Active": "Active",
+      "menu.list.status.Draft": "Draft",
+      "menu.list.noMenusActive": "No active menus.",
+      "menu.list.noMenusDraft": "No draft menus.",
+      "menu.list.updatedBy": "Updated by",
       "menu.jsonHelp": "Raw menu payload sent to <code>PUT {path}</code>. Edit carefully — this must match the akut.domain <code>Menu</code> shape.",
       "menu.applyToForm": "Apply to form",
       "menu.details": "Menu details",
@@ -145,8 +159,12 @@
 
       "page.dashboard.heading": "Painel",
       "page.dashboard.subheading": "Gerencie seu cardápio Akut e o status dos clientes",
-      "page.menu.heading": "Editor de cardápio",
-      "page.menu.subheading": "Edite o cardápio ativo ou trabalhe em um rascunho",
+      "page.menu.heading": "Cardápios",
+      "page.menu.subheading": "Selecione um cardápio para editar ou crie um novo",
+      "page.menu-list.heading": "Cardápios",
+      "page.menu-list.subheading": "Selecione um cardápio para editar ou crie um novo",
+      "page.menu-edit.heading": "Editor de cardápio",
+      "page.menu-edit.subheading": "Edite o cardápio ativo ou trabalhe em um rascunho",
       "page.tenant.heading": "Clientes",
       "page.tenant.subheading": "Ativar ou desativar este cliente",
 
@@ -173,12 +191,22 @@
       "menu.draft": "Rascunho",
       "menu.load": "Carregar",
       "menu.newMenu": "Novo cardápio",
+      "menu.backToList": "← Cardápios",
       "menu.form": "Formulário",
       "menu.json": "JSON",
       "menu.saveDraft": "Salvar como rascunho",
       "menu.publish": "Publicar (Ativo)",
       "menu.loading": "Carregando…",
-      "menu.empty": "Nenhum cardápio carregado. Escolha <strong>Cardápio ativo</strong> ou <strong>Rascunho</strong> e pressione <strong>Carregar</strong>, ou inicie um <strong>Novo cardápio</strong>.",
+      "menu.empty": "Nenhum cardápio selecionado. Volte à lista de cardápios e escolha um para editar, ou crie um <strong>Novo cardápio</strong>.",
+      "menu.list.loading": "Carregando cardápios…",
+      "menu.list.empty": "Nenhum cardápio encontrado.",
+      "menu.list.errorLoad": "Falha ao carregar a lista de cardápios.",
+      "menu.list.newMenu": "Novo cardápio",
+      "menu.list.status.Active": "Ativo",
+      "menu.list.status.Draft": "Rascunho",
+      "menu.list.noMenusActive": "Nenhum cardápio ativo.",
+      "menu.list.noMenusDraft": "Nenhum rascunho.",
+      "menu.list.updatedBy": "Atualizado por",
       "menu.jsonHelp": "Payload bruto do cardápio enviado para <code>PUT {path}</code>. Edite com cuidado — deve corresponder à forma <code>Menu</code> do akut.domain.",
       "menu.applyToForm": "Aplicar ao formulário",
       "menu.details": "Detalhes do cardápio",
@@ -300,7 +328,7 @@
     }
 
     // Update page heading/subheading using the data-page key on body
-    var pageKey = document.body && document.body.getAttribute("data-page");
+    var pageKey = document.body && (document.body.getAttribute("data-page-i18n") || document.body.getAttribute("data-page"));
     if (pageKey) {
       var h1 = document.querySelector(".page-header h1");
       var sub = document.querySelector(".page-header .page-sub");

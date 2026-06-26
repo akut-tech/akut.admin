@@ -29,6 +29,7 @@ akut:
 
   # Route paths mapped to the Menu/Tenant lambda handlers.
   menu_path: "/menu"
+  menu_metadata_path: "/menu/metadata"
   tenant_path: "/tenant"
 
   # Amazon Cognito (used by the login page).
