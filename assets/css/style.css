@@ -98,8 +98,20 @@ code { background: var(--surface-2); padding: .1em .4em; border-radius: 4px; fon
 
 .app-main { flex: 1; min-width: 0; padding: 28px 36px; max-width: 1100px; }
 .page-header { margin-bottom: 22px; }
+.page-header-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .page-header h1 { font-size: 24px; }
 .page-sub { color: var(--muted); margin: 0; }
+.tenant-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(79, 140, 255, 0.12);
+  border: 1px solid rgba(79, 140, 255, 0.35);
+  border-radius: 999px;
+  color: #aac6ff;
+  font-size: 12px; font-weight: 600;
+  padding: 3px 11px;
+  white-space: nowrap;
+}
+.tenant-tag::before { content: '🏢'; font-size: 12px; }
 
 /* ---------- Cards & grids ---------- */
 .card {

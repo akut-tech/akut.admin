@@ -93,7 +93,10 @@
       <span class="brand-name">Akut Admin</span>
     </div>
     <header class="page-header">
-      <h1>Tenant</h1>
+      <div class="page-header-row">
+        <h1>Tenant</h1>
+        <span class="tenant-tag" id="pageHeaderTenant" hidden></span>
+      </div>
       <p class="page-sub">Enable or disable this tenant</p>
     </header>
     <div class="page-body">
@@ -134,6 +137,21 @@
     
       <script src="/assets/js/tenant.js"></script>
     
+  
+  
+  <script>
+    (function () {
+      var el = document.getElementById('pageHeaderTenant');
+      if (!el) return;
+      var c = AkutAuth.claims();
+      var tenant = (window.AkutApi && AkutApi.getSubTenant()) ||
+        (c && c['custom:tenant']) || '';
+      if (tenant) {
+        el.textContent = tenant;
+        el.hidden = false;
+      }
+    })();
+  </script>
   
 </body>
 </html>
