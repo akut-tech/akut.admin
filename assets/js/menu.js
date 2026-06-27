@@ -140,6 +140,7 @@
       AvailabilityTime: null,
       Description: null,
       Notes: null,
+      FoundedYear: null,
       TemplateId: "",
       DefaultLanguage: 2,
       Currency: 1,
@@ -215,6 +216,10 @@
       grid2([
         selectField(t("menu.currency"), m.Currency, E.currency, function (v) { m.Currency = Number(v); }),
         textField(t("menu.notes"), m.Notes || "", function (v) { m.Notes = v || null; })
+      ]),
+      grid2([
+        foundedYearField(t("menu.foundedYear"), m.FoundedYear, function (v) { m.FoundedYear = v; }),
+        null
       ]),
       availabilityTimeField(t("menu.availabilityTime"), m.AvailabilityTime, function (avail) {
         m.AvailabilityTime = avail;
@@ -383,6 +388,20 @@
       oninput: function (e) { onChange(e.target.value); }
     });
     return field(label, input);
+  }
+
+  function foundedYearField(label, value, onChange) {
+    var currentYear = new Date().getFullYear();
+    var input = h("input", {
+      type: "number", value: value == null ? "" : value,
+      min: "1500", max: String(currentYear), step: "1",
+      placeholder: "—",
+      oninput: function (e) {
+        var v = e.target.value.trim();
+        onChange(v !== "" ? intOr(v, null) : null);
+      }
+    });
+    return field(label, input, t("menu.foundedYearHelp", { max: currentYear }));
   }
 
   function selectField(label, value, enumMap, onChange) {
@@ -673,6 +692,12 @@
   function validate(menu) {
     if (!menu.TemplateId) return t("menu.errorTemplateId");
     if (isEmptyTranslations(menu.Name)) return t("menu.errorName");
+    if (menu.FoundedYear != null) {
+      var currentYear = new Date().getFullYear();
+      if (menu.FoundedYear < 1500 || menu.FoundedYear > currentYear) {
+        return t("menu.errorFoundedYear", { max: currentYear });
+      }
+    }
     return null;
   }
 
@@ -693,6 +718,7 @@
         : null,
       Description: cleanTranslationsOrNull(menu.Description),
       Notes: menu.Notes || null,
+      FoundedYear: menu.FoundedYear != null ? intOr(menu.FoundedYear, null) : null,
       TemplateId: menu.TemplateId || "",
       DefaultLanguage: Number(menu.DefaultLanguage),
       Currency: Number(menu.Currency),
