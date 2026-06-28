@@ -92,7 +92,7 @@
       "menu.addCategory": "Add category",
       "menu.noCategories": "No categories yet.",
       "menu.order": "Order",
-      "menu.categoryImage": "Category image",
+
       "menu.items": "Items",
       "menu.addItem": "Add item",
       "menu.noItems": "No items yet.",
@@ -242,7 +242,7 @@
       "menu.addCategory": "Adicionar categoria",
       "menu.noCategories": "Nenhuma categoria ainda.",
       "menu.order": "Ordem",
-      "menu.categoryImage": "Imagem da categoria",
+
       "menu.items": "Itens",
       "menu.addItem": "Adicionar item",
       "menu.noItems": "Nenhum item ainda.",

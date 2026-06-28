@@ -262,7 +262,6 @@
       translationsField(t("menu.description"), cat.Description || {}, function (tr) {
         cat.Description = isEmptyTranslations(tr) ? null : tr;
       }),
-      imageField(t("menu.categoryImage"), cat.Image, function (img) { cat.Image = img; }),
       itemsBlock(cat, ci)
     ]);
 
@@ -663,7 +662,7 @@
   }
 
   function newCategory(order) {
-    return { Id: uuid(), Order: order, Name: {}, Description: null, Items: [], Image: null };
+    return { Id: uuid(), Order: order, Name: {}, Description: null, Items: [] };
   }
 
   function newItem(order) {
@@ -747,7 +746,7 @@
           Order: intOr(cat.Order, 0),
           Name: cleanTranslations(cat.Name),
           Description: cleanTranslationsOrNull(cat.Description),
-          Image: cleanImage(cat.Image),
+
           Items: (cat.Items || []).map(function (item) {
             return {
               Id: item.Id || uuid(),
