@@ -27,6 +27,6 @@ window.AKUT_ENUMS = {
   },
   menuItemTag: {
     1: "New", 2: "Popular", 3: "RecommendedByChef", 4: "Seasonal",
-    5: "LimitedTimeOffer", 6: "SpecialOffer", 7: "HealthyChoice"
+    5: "LimitedEdition"
   }
 };
