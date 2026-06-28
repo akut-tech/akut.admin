@@ -28,5 +28,10 @@ window.AKUT_ENUMS = {
   menuItemTag: {
     1: "New", 2: "Popular", 3: "RecommendedByChef", 4: "Seasonal",
     5: "LimitedEdition"
+  },
+  allergen: {
+    1: "Gluten", 2: "Crustaceans", 3: "Eggs", 4: "Fish", 5: "Peanuts",
+    6: "Soybeans", 7: "Milk", 8: "Nuts", 9: "Celery", 10: "Mustard",
+    11: "Sesame", 12: "Sulphites", 13: "Lupin", 14: "Molluscs"
   }
 };

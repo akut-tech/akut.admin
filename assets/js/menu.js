@@ -157,6 +157,10 @@
       cat.Name = cat.Name || {};
       cat.Items = cat.Items || [];
       cat.Items.forEach(function (item) {
+        // Discard legacy free-text allergens (Translations object) — cannot map reliably
+        if (item.Allergens && !Array.isArray(item.Allergens)) {
+          item.Allergens = [];
+        }
         if (item.IsNew && item.Tag == null) item.Tag = 1;
         delete item.IsNew;
       });
@@ -311,9 +315,7 @@
       translationsField(t("menu.ingredients"), item.Ingredients || {}, function (tr) {
         item.Ingredients = isEmptyTranslations(tr) ? null : tr;
       }),
-      translationsField(t("menu.allergens"), item.Allergens || {}, function (tr) {
-        item.Allergens = isEmptyTranslations(tr) ? null : tr;
-      }),
+      allergensField(item),
       dietsField(item),
       youTubeField(item),
       imagesField(item)
@@ -508,6 +510,31 @@
     return (hh < 10 ? "0" : "") + hh + ":00:00";
   }
 
+  function allergensField(item) {
+    item.Allergens = item.Allergens || [];
+    var boxes = Object.keys(E.allergen).map(function (k) {
+      var val = Number(k);
+      return h("label", { class: "chip-check" }, [
+        h("input", {
+          type: "checkbox", value: val,
+          checked: item.Allergens.indexOf(val) !== -1,
+          onchange: function (e) {
+            if (e.target.checked) {
+              if (item.Allergens.indexOf(val) === -1) item.Allergens.push(val);
+            } else {
+              item.Allergens = item.Allergens.filter(function (a) { return a !== val; });
+            }
+          }
+        }),
+        h("span", null, [t("menu.allergen." + k)])
+      ]);
+    });
+    return h("div", { class: "field" }, [
+      h("span", { class: "field-label" }, [t("menu.allergens")]),
+      h("div", { class: "chip-grid" }, boxes)
+    ]);
+  }
+
   function dietsField(item) {
     item.Diets = item.Diets || [];
     var boxes = Object.keys(E.foodDietType).map(function (k) {
@@ -667,9 +694,9 @@
 
   function newItem(order) {
     return {
-      Id: uuid(), Order: order, Diets: [], Images: [], YouTubeVideoUrls: null,
+      Id: uuid(), Order: order, Diets: [], Allergens: [], Images: [], YouTubeVideoUrls: null,
       Name: {}, ShortDescription: null, FullDescription: null,
-      Ingredients: null, Allergens: null, Price: 0, Tag: null
+      Ingredients: null, Price: 0, Tag: null
     };
   }
 
@@ -759,7 +786,7 @@
               ShortDescription: cleanTranslationsOrNull(item.ShortDescription),
               FullDescription: cleanTranslationsOrNull(item.FullDescription),
               Ingredients: cleanTranslationsOrNull(item.Ingredients),
-              Allergens: cleanTranslationsOrNull(item.Allergens),
+              Allergens: (item.Allergens && item.Allergens.length) ? item.Allergens.map(Number) : null,
               Price: floatOr(item.Price, 0),
               Tag: item.Tag != null ? intOr(item.Tag, null) : null
             };
