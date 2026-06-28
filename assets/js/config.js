@@ -29,5 +29,9 @@ window.AKUT_ENUMS = {
     5: "EggFree", 6: "SugarFree", 7: "CaffeineFree", 8: "AlcoholFree",
     9: "LowCarb", 10: "LowFat", 11: "LowSalt", 12: "LowSugar",
     13: "Organic", 14: "Bio", 15: "Kosher", 16: "Raw", 17: "Spicy"
+  },
+  menuItemTag: {
+    1: "New", 2: "Popular", 3: "RecommendedByChef", 4: "Seasonal",
+    5: "LimitedTimeOffer", 6: "SpecialOffer", 7: "HealthyChoice"
   }
 };

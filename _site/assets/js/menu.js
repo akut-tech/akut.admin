@@ -156,6 +156,10 @@
     menu.Categories.forEach(function (cat) {
       cat.Name = cat.Name || {};
       cat.Items = cat.Items || [];
+      cat.Items.forEach(function (item) {
+        if (item.IsNew && item.Tag == null) item.Tag = 1;
+        delete item.IsNew;
+      });
     });
     return menu;
   }
@@ -297,7 +301,7 @@
         numberField(t("menu.order"), item.Order, function (v) { item.Order = intOr(v, 0); }),
         priceField(t("menu.price"), item.Price, function (v) { item.Price = floatOr(v, 0); })
       ]),
-      checkboxField(t("menu.markAsNew"), !!item.IsNew, function (v) { item.IsNew = v; }),
+      tagField(t("menu.tag"), item.Tag, function (v) { item.Tag = v; }),
       translationsField(t("menu.name"), item.Name, function (tr) { item.Name = tr; }),
       translationsField(t("menu.shortDesc"), item.ShortDescription || {}, function (tr) {
         item.ShortDescription = isEmptyTranslations(tr) ? null : tr;
@@ -421,6 +425,20 @@
     return h("label", { class: "field field-checkbox" }, [
       input, h("span", null, [label])
     ]);
+  }
+
+  function tagField(label, value, onChange) {
+    var options = [h("option", { value: "" }, [t("menu.tag.none")])];
+    Object.keys(E.menuItemTag).forEach(function (k) {
+      options.push(h("option", { value: k, selected: Number(k) === Number(value) }, [t("menu.tag." + k)]));
+    });
+    var select = h("select", {
+      onchange: function (e) {
+        var v = e.target.value;
+        onChange(v !== "" ? Number(v) : null);
+      }
+    }, options);
+    return field(label, select);
   }
 
   function translationsField(label, trans, onChange) {
@@ -652,7 +670,7 @@
     return {
       Id: uuid(), Order: order, Diets: [], Images: [], YouTubeVideoUrls: null,
       Name: {}, ShortDescription: null, FullDescription: null,
-      Ingredients: null, Allergens: null, Price: 0, IsNew: false
+      Ingredients: null, Allergens: null, Price: 0, Tag: null
     };
   }
 
@@ -744,7 +762,7 @@
               Ingredients: cleanTranslationsOrNull(item.Ingredients),
               Allergens: cleanTranslationsOrNull(item.Allergens),
               Price: floatOr(item.Price, 0),
-              IsNew: !!item.IsNew
+              Tag: item.Tag != null ? intOr(item.Tag, null) : null
             };
           })
         };
