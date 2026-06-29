@@ -118,6 +118,15 @@
     }).then(function () { return true; });
   }
 
+  function previewMenu(menu) {
+    var payload = Object.assign({}, menu, { Status: "preview" });
+    return request(cfg().menuPath, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function () { return true; });
+  }
+
   // ---- Tenant -------------------------------------------------------------
 
   // status: "Enabled" | "Disabled"
@@ -133,6 +142,7 @@
     getMenuMetadata: getMenuMetadata,
     getMenu: getMenu,
     saveMenu: saveMenu,
+    previewMenu: previewMenu,
     setTenantStatus: setTenantStatus,
     getSubTenant: getSubTenant,
     setSubTenant: setSubTenant

@@ -64,6 +64,26 @@
     return h("section", { "class": "card" }, [header, body]);
   }
 
+  function previewFromList(menuId, btn) {
+    btn.disabled = true;
+    AkutApi.getMenu(menuId, "Draft")
+      .then(function (menu) {
+        if (!menu) throw new Error(t("menu.errorLoad"));
+        return AkutApi.previewMenu(menu).then(function () {
+          var tenant = AkutApi.getSubTenant();
+          var previewUrl = "https://menu.akut.pt/preview/" +
+            encodeURIComponent(tenant) + "/" + encodeURIComponent(menuId);
+          window.open(previewUrl, "_blank", "noopener,noreferrer");
+        });
+      })
+      .catch(function (err) {
+        showAlert("error", err.message || t("menu.errorPreview"));
+      })
+      .finally(function () {
+        btn.disabled = false;
+      });
+  }
+
   function renderMenuItem(item, status) {
     var updatedAt = formatDate(item.UpdatedAt);
     var metaChildren = [
@@ -80,6 +100,16 @@
         rel: "noopener noreferrer",
         onclick: function (e) { e.stopPropagation(); }
       }, [t("menu.list.viewPublished")]));
+    }
+    if (status === "Draft") {
+      var previewBtn = h("button", {
+        "class": "btn btn-ghost btn-sm",
+        onclick: function (e) {
+          e.stopPropagation();
+          previewFromList(item.Id, previewBtn);
+        }
+      }, [t("menu.list.preview")]);
+      metaChildren.unshift(previewBtn);
     }
     var el = h("div", { "class": "menu-list-item", role: "button", tabindex: "0" }, [
       h("div", { "class": "menu-item-name" }, [item.Name]),

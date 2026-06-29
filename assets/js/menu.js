@@ -36,6 +36,7 @@
     refs.jsonTab       = document.getElementById("jsonTab");
     refs.saveDraftBtn  = document.getElementById("saveDraftBtn");
     refs.publishBtn    = document.getElementById("publishBtn");
+    refs.previewBtn    = document.getElementById("previewBtn");
     refs.menuAlert     = document.getElementById("menuAlert");
     refs.loadingState  = document.getElementById("editorLoading");
     refs.emptyState    = document.getElementById("editorEmpty");
@@ -50,6 +51,7 @@
     refs.newBtn.addEventListener("click", newMenu);
     refs.saveDraftBtn.addEventListener("click", function () { save("Draft"); });
     refs.publishBtn.addEventListener("click", function () { save("Active"); });
+    if (refs.previewBtn) refs.previewBtn.addEventListener("click", preview);
     refs.formTab.addEventListener("click", function () { switchView("form"); });
     refs.jsonTab.addEventListener("click", function () { switchView("json"); });
     refs.jsonApply.addEventListener("click", applyJson);
@@ -712,6 +714,32 @@
     var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
   }
 
+  // ---- Preview ------------------------------------------------------------
+  function preview() {
+    if (!state.menu) { alert("error", t("menu.errorNothingToSave")); return; }
+    if (state.view === "json") applyJson();
+    clearAlert();
+    var payload = sanitize(state.menu);
+
+    var problem = validate(payload);
+    if (problem) { alert("error", problem); return; }
+
+    setBusy(true);
+    if (refs.previewBtn) refs.previewBtn.textContent = t("menu.previewing");
+    AkutApi.previewMenu(payload)
+      .then(function () {
+        var tenant = AkutApi.getSubTenant();
+        var previewUrl = "https://menu.akut.pt/preview/" +
+          encodeURIComponent(tenant) + "/" + encodeURIComponent(payload.Id);
+        window.open(previewUrl, "_blank", "noopener,noreferrer");
+      })
+      .catch(function (err) { alert("error", err.message || t("menu.errorPreview")); })
+      .finally(function () {
+        setBusy(false);
+        if (refs.previewBtn) refs.previewBtn.textContent = t("menu.preview");
+      });
+  }
+
   // ---- Save ---------------------------------------------------------------
   function save(targetStatus) {
     if (!state.menu) { alert("error", t("menu.errorNothingToSave")); return; }
@@ -748,6 +776,7 @@
   function setBusy(busy) {
     refs.saveDraftBtn.disabled = busy;
     refs.publishBtn.disabled = busy;
+    if (refs.previewBtn) refs.previewBtn.disabled = busy;
     refs.publishBtn.textContent = busy ? t("menu.saving") : t("menu.publish");
   }
 
