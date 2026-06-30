@@ -153,6 +153,19 @@
   </div>
 </div>
 
+<!-- ── Publish conflict modal ───────────────────────────────────── -->
+<div id="publishConflictOverlay" class="modal-overlay" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="publishConflictTitle">
+    <h3 id="publishConflictTitle" data-i18n="menu.publish.conflictTitle">Active menu conflict</h3>
+    <p data-i18n="menu.publish.conflictDesc">An active menu already exists with this ID. Choose how to proceed.</p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-danger" id="publishReplaceBtn" data-i18n="menu.publish.replace">Replace active menu</button>
+      <button type="button" class="btn btn-primary" id="publishNewBtn" data-i18n="menu.publish.new">Create new active menu</button>
+      <button type="button" class="btn btn-ghost" id="publishCancelBtn" data-i18n="menu.publish.cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
     </div>
   </main>
   <!-- Guard: redirect to login if there is no valid session -->

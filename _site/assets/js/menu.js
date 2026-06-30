@@ -26,6 +26,9 @@
   var openCats  = {};
   var openItems = {};
 
+  // Holds the sanitized payload while the publish-conflict modal is open
+  var pendingPublishPayload = null;
+
   var refs = {};
   document.addEventListener("DOMContentLoaded", function () {
     // Map logical ref names to the actual DOM element IDs used in menu.html
@@ -45,7 +48,11 @@
     refs.jsonArea      = document.getElementById("jsonArea");
     refs.jsonApply     = document.getElementById("jsonApply");
     refs.jsonStatus    = document.getElementById("jsonStatus");
-    refs.backToListBtn = document.getElementById("backToListBtn");
+    refs.backToListBtn              = document.getElementById("backToListBtn");
+    refs.publishConflictOverlay     = document.getElementById("publishConflictOverlay");
+    refs.publishReplaceBtn          = document.getElementById("publishReplaceBtn");
+    refs.publishNewBtn              = document.getElementById("publishNewBtn");
+    refs.publishCancelBtn           = document.getElementById("publishCancelBtn");
 
     refs.loadBtn.addEventListener("click", load);
     refs.newBtn.addEventListener("click", newMenu);
@@ -57,6 +64,20 @@
     refs.jsonApply.addEventListener("click", applyJson);
     refs.backToListBtn.addEventListener("click", function () {
       window.MenuList && window.MenuList.showListView();
+    });
+    refs.publishReplaceBtn.addEventListener("click", function () {
+      var payload = pendingPublishPayload;
+      hidePublishModal();
+      doPublish(payload);
+    });
+    refs.publishNewBtn.addEventListener("click", function () {
+      var payload = Object.assign({}, pendingPublishPayload, { Id: uuid() });
+      hidePublishModal();
+      doPublish(payload);
+    });
+    refs.publishCancelBtn.addEventListener("click", function () {
+      hidePublishModal();
+      setBusy(false);
     });
 
     // Expose editor API — called by menu-list.js on item click or "New menu"
@@ -751,14 +772,50 @@
     var problem = validate(payload);
     if (problem) { alert("error", problem); return; }
 
+    // When publishing a draft, check whether an active menu with the same ID
+    // already exists before proceeding — conflict requires user confirmation.
+    if (targetStatus === "Active" && state.status === "Draft") {
+      setBusy(true);
+      refs.publishBtn.textContent = t("menu.publish.checking");
+      AkutApi.getMenu(payload.Id, "Active")
+        .then(function (existing) {
+          if (existing) {
+            pendingPublishPayload = payload;
+            showPublishModal();
+            setBusy(false);
+          } else {
+            doPublish(payload);
+          }
+        })
+        .catch(function (err) {
+          alert("error", err.message || t("menu.errorSave"));
+          setBusy(false);
+        });
+      return;
+    }
+
+    doPublish(payload);
+  }
+
+  function doPublish(payload) {
     setBusy(true);
     AkutApi.saveMenu(payload)
       .then(function () {
         state.menu.Status = payload.Status;
-        alert("success", t("menu.savedAs", { status: t("menu.status." + targetStatus) }));
+        var statusKey = payload.Status === 2 ? "Draft" : "Active";
+        alert("success", t("menu.savedAs", { status: t("menu.status." + statusKey) }));
       })
       .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
       .finally(function () { setBusy(false); });
+  }
+
+  function showPublishModal() {
+    refs.publishConflictOverlay.hidden = false;
+  }
+
+  function hidePublishModal() {
+    refs.publishConflictOverlay.hidden = true;
+    pendingPublishPayload = null;
   }
 
   function validate(menu) {
