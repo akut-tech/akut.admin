@@ -1,6 +1,6 @@
-/* Menu editor: loads a menu (Active or Draft) from the API, renders a
- * form-based editor over the akut.domain Menu shape, and saves it back via
- * PUT. A raw-JSON tab mirrors the same state for power users.
+/* Menu editor: loads a menu by ID from the API, renders a form-based editor
+ * over the akut.domain Menu shape, and saves/publishes it via POST (create) or
+ * PUT+PATCH (update). A raw-JSON tab mirrors the same state for power users.
  *
  * Property casing is PascalCase to match the lambda's Newtonsoft (de)serialization.
  * Translations are objects keyed by Language *name* (e.g. "English"); other
@@ -16,8 +16,8 @@
   var TEMPLATE_PRESETS = ["default", "epicurean", "deepblue", "senjutsu", "lisbon"];
 
   var state = {
-    menuId: null,
-    status: "Active",
+    menuId: null,   // null for a new (unsaved) menu
+    status: "Disabled",
     menu: null,
     view: "form"
   };
@@ -25,9 +25,6 @@
   // Tracks which accordion IDs are open so renderForm() can restore them
   var openCats  = {};
   var openItems = {};
-
-  // Holds the sanitized payload while the publish-conflict modal is open
-  var pendingPublishPayload = null;
 
   var refs = {};
   document.addEventListener("DOMContentLoaded", function () {
@@ -37,7 +34,7 @@
     refs.newBtn        = document.getElementById("newEditorBtn");
     refs.formTab       = document.getElementById("formTab");
     refs.jsonTab       = document.getElementById("jsonTab");
-    refs.saveDraftBtn  = document.getElementById("saveDraftBtn");
+    refs.saveBtn       = document.getElementById("saveDraftBtn");
     refs.publishBtn    = document.getElementById("publishBtn");
     refs.previewBtn    = document.getElementById("previewBtn");
     refs.menuAlert     = document.getElementById("menuAlert");
@@ -48,36 +45,18 @@
     refs.jsonArea      = document.getElementById("jsonArea");
     refs.jsonApply     = document.getElementById("jsonApply");
     refs.jsonStatus    = document.getElementById("jsonStatus");
-    refs.backToListBtn              = document.getElementById("backToListBtn");
-    refs.publishConflictOverlay     = document.getElementById("publishConflictOverlay");
-    refs.publishReplaceBtn          = document.getElementById("publishReplaceBtn");
-    refs.publishNewBtn              = document.getElementById("publishNewBtn");
-    refs.publishCancelBtn           = document.getElementById("publishCancelBtn");
+    refs.backToListBtn = document.getElementById("backToListBtn");
 
     refs.loadBtn.addEventListener("click", load);
     refs.newBtn.addEventListener("click", newMenu);
-    refs.saveDraftBtn.addEventListener("click", function () { save("Draft"); });
-    refs.publishBtn.addEventListener("click", function () { save("Active"); });
+    refs.saveBtn.addEventListener("click", function () { save(false); });
+    refs.publishBtn.addEventListener("click", function () { save(true); });
     if (refs.previewBtn) refs.previewBtn.addEventListener("click", preview);
     refs.formTab.addEventListener("click", function () { switchView("form"); });
     refs.jsonTab.addEventListener("click", function () { switchView("json"); });
     refs.jsonApply.addEventListener("click", applyJson);
     refs.backToListBtn.addEventListener("click", function () {
       window.MenuList && window.MenuList.showListView();
-    });
-    refs.publishReplaceBtn.addEventListener("click", function () {
-      var payload = pendingPublishPayload;
-      hidePublishModal();
-      doPublish(payload);
-    });
-    refs.publishNewBtn.addEventListener("click", function () {
-      var payload = Object.assign({}, pendingPublishPayload, { Id: uuid() });
-      hidePublishModal();
-      doPublish(payload);
-    });
-    refs.publishCancelBtn.addEventListener("click", function () {
-      hidePublishModal();
-      setBusy(false);
     });
 
     // Expose editor API — called by menu-list.js on item click or "New menu"
@@ -89,12 +68,10 @@
         state.view   = "form";
         openCats  = {};
         openItems = {};
-        refs.statusSelect.value = state.status;
+        if (refs.statusSelect) refs.statusSelect.value = state.status;
         load();
       },
-      newMenu: function (status) {
-        state.status = status || "Draft";
-        refs.statusSelect.value = state.status;
+      newMenu: function () {
         newMenu();
       }
     };
@@ -139,9 +116,8 @@
   // ---- Load / new ---------------------------------------------------------
   function load() {
     clearAlert();
-    state.status = refs.statusSelect.value;
     showOnly("loading");
-    AkutApi.getMenu(state.menuId, state.status)
+    AkutApi.getMenu(state.menuId)
       .then(function (menu) {
         if (!menu) { state.menu = null; showOnly("empty"); return; }
         state.menu = normalize(menu);
@@ -156,8 +132,8 @@
   function newMenu() {
     clearAlert();
     state.menuId = null;
+    state.status = "Disabled";
     state.menu = {
-      Id: uuid(),
       Logo: null,
       Name: {},
       AvailabilityTime: null,
@@ -167,9 +143,9 @@
       TemplateId: "",
       DefaultLanguage: 2,
       Currency: 1,
-      Categories: [],
-      Status: state.status === "Draft" ? 2 : 1
+      Categories: []
     };
+    if (refs.statusSelect) refs.statusSelect.value = state.status;
     render();
   }
 
@@ -747,11 +723,14 @@
 
     setBusy(true);
     if (refs.previewBtn) refs.previewBtn.textContent = t("menu.previewing");
-    AkutApi.previewMenu(payload)
-      .then(function () {
+    // Use existing menuId as path param, or a temporary uuid for new menus.
+    var previewId = state.menuId || uuid();
+    AkutApi.previewMenu(previewId, payload)
+      .then(function (result) {
+        var menuId = (result && result.menuId) ? result.menuId : previewId;
         var tenant = AkutApi.getSubTenant();
         var previewUrl = "https://menu.akut.pt/preview/" +
-          encodeURIComponent(tenant) + "/" + encodeURIComponent(payload.Id);
+          encodeURIComponent(tenant) + "/" + encodeURIComponent(menuId);
         window.open(previewUrl, "_blank", "noopener,noreferrer");
       })
       .catch(function (err) { alert("error", err.message || t("menu.errorPreview")); })
@@ -762,60 +741,56 @@
   }
 
   // ---- Save ---------------------------------------------------------------
-  function save(targetStatus) {
+  // publish=false → save body only, keep current status (POST for new, PUT for existing)
+  // publish=true  → save body + activate (POST→PATCH or PUT→PATCH if not already Active)
+  function save(publish) {
     if (!state.menu) { alert("error", t("menu.errorNothingToSave")); return; }
     if (state.view === "json") applyJson();
     clearAlert();
     var payload = sanitize(state.menu);
-    payload.Status = targetStatus === "Draft" ? 2 : 1;
 
     var problem = validate(payload);
     if (problem) { alert("error", problem); return; }
 
-    // When publishing a draft, check whether an active menu with the same ID
-    // already exists before proceeding — conflict requires user confirmation.
-    if (targetStatus === "Active" && state.status === "Draft") {
-      setBusy(true);
-      refs.publishBtn.textContent = t("menu.publish.checking");
-      AkutApi.getMenu(payload.Id, "Active")
-        .then(function (existing) {
-          if (existing) {
-            pendingPublishPayload = payload;
-            showPublishModal();
-            setBusy(false);
-          } else {
-            doPublish(payload);
-          }
-        })
-        .catch(function (err) {
-          alert("error", err.message || t("menu.errorSave"));
-          setBusy(false);
-        });
-      return;
-    }
-
-    doPublish(payload);
-  }
-
-  function doPublish(payload) {
     setBusy(true);
-    AkutApi.saveMenu(payload)
-      .then(function () {
-        state.menu.Status = payload.Status;
-        var statusKey = payload.Status === 2 ? "Draft" : "Active";
-        alert("success", t("menu.savedAs", { status: t("menu.status." + statusKey) }));
-      })
-      .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
-      .finally(function () { setBusy(false); });
-  }
 
-  function showPublishModal() {
-    refs.publishConflictOverlay.hidden = false;
-  }
-
-  function hidePublishModal() {
-    refs.publishConflictOverlay.hidden = true;
-    pendingPublishPayload = null;
+    if (!state.menuId) {
+      // New menu: create first (always starts as Disabled), then activate if publishing.
+      AkutApi.createMenu(payload)
+        .then(function (result) {
+          state.menuId = result.menuId;
+          state.status = "Disabled";
+          if (refs.statusSelect) refs.statusSelect.value = state.status;
+          if (!publish) {
+            alert("success", t("menu.savedAs", { status: t("menu.status.Disabled") }));
+            return;
+          }
+          return AkutApi.setMenuStatus(state.menuId, "active").then(function () {
+            state.status = "Active";
+            if (refs.statusSelect) refs.statusSelect.value = state.status;
+            alert("success", t("menu.savedAs", { status: t("menu.status.Active") }));
+          });
+        })
+        .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+        .finally(function () { setBusy(false); });
+    } else {
+      // Existing menu: update body, then activate if publishing and not already Active.
+      AkutApi.updateMenu(state.menuId, payload)
+        .then(function () {
+          if (!publish || state.status === "Active") {
+            var statusKey = state.status || "Disabled";
+            alert("success", t("menu.savedAs", { status: t("menu.status." + statusKey) }));
+            return;
+          }
+          return AkutApi.setMenuStatus(state.menuId, "active").then(function () {
+            state.status = "Active";
+            if (refs.statusSelect) refs.statusSelect.value = state.status;
+            alert("success", t("menu.savedAs", { status: t("menu.status.Active") }));
+          });
+        })
+        .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+        .finally(function () { setBusy(false); });
+    }
   }
 
   function validate(menu) {
@@ -831,7 +806,7 @@
   }
 
   function setBusy(busy) {
-    refs.saveDraftBtn.disabled = busy;
+    refs.saveBtn.disabled = busy;
     refs.publishBtn.disabled = busy;
     if (refs.previewBtn) refs.previewBtn.disabled = busy;
     refs.publishBtn.textContent = busy ? t("menu.saving") : t("menu.publish");
@@ -840,7 +815,7 @@
   function sanitize(menu) {
     var avail = menu.AvailabilityTime;
     return {
-      Id: menu.Id || uuid(),
+      // Id and Status are managed server-side; omit from the body.
       Logo: cleanImage(menu.Logo),
       Name: cleanTranslations(menu.Name),
       AvailabilityTime: (avail && (avail.From != null || avail.To != null))
@@ -852,7 +827,6 @@
       TemplateId: menu.TemplateId || "",
       DefaultLanguage: Number(menu.DefaultLanguage),
       Currency: Number(menu.Currency),
-      Status: Number(menu.Status),
       Categories: (menu.Categories || []).map(function (cat) {
         return {
           Id: cat.Id || uuid(),

@@ -17,7 +17,7 @@ window.AKUT_CONFIG = {
 window.AKUT_ENUMS = {
   language: { 1: "Portuguese", 2: "English", 3: "Spanish", 4: "French" },
   currency: { 1: "Euro", 2: "Dollar", 3: "Pound" },
-  menuStatus: { 1: "Active", 2: "Draft" },
+  menuStatus: { 1: "Active", 2: "Disabled", 3: "Deleted" },
   imageSource: { 0: "ExternalGallery", 1: "GoogleDrive", 2: "AkutGallery" },
   foodDietType: {
     1: "Vegan", 2: "Vegetarian", 3: "GlutenFree", 4: "LactoseFree",

@@ -15,7 +15,7 @@
 
     refs.newMenuBtn.addEventListener("click", function () {
       showEditorView();
-      window.MenuEditor.newMenu("Draft");
+      window.MenuEditor.newMenu();
     });
 
     refs.refreshListBtn.addEventListener("click", loadMetadata);
@@ -43,7 +43,7 @@
 
   function render(data) {
     refs.root.innerHTML = "";
-    var statuses = ["Active", "Draft"];
+    var statuses = ["Active", "Disabled"];
     var hasAny = false;
     statuses.forEach(function (status) {
       var items = data[status] || [];
@@ -66,13 +66,14 @@
 
   function previewFromList(menuId, btn) {
     btn.disabled = true;
-    AkutApi.getMenu(menuId, "Draft")
+    AkutApi.getMenu(menuId)
       .then(function (menu) {
         if (!menu) throw new Error(t("menu.errorLoad"));
-        return AkutApi.previewMenu(menu).then(function () {
+        return AkutApi.previewMenu(menuId, menu).then(function (result) {
+          var previewMenuId = (result && result.menuId) ? result.menuId : menuId;
           var tenant = AkutApi.getSubTenant();
           var previewUrl = "https://menu.akut.pt/preview/" +
-            encodeURIComponent(tenant) + "/" + encodeURIComponent(menuId);
+            encodeURIComponent(tenant) + "/" + encodeURIComponent(previewMenuId);
           window.open(previewUrl, "_blank", "noopener,noreferrer");
         });
       })
@@ -101,7 +102,7 @@
         onclick: function (e) { e.stopPropagation(); }
       }, [t("menu.list.viewPublished")]));
     }
-    if (status === "Draft") {
+    if (status === "Disabled") {
       var previewBtn = h("button", {
         "class": "btn btn-ghost btn-sm",
         onclick: function (e) {

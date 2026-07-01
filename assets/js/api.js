@@ -1,9 +1,14 @@
 /* Thin client over the lambda.akut HTTP API.
  *
  * Endpoints (see akut.function/Function.cs):
- *   GET  {menuPath}?status=Active|Draft   -> Menu JSON ("{}" when none)
- *   PUT  {menuPath}    body = Menu JSON    -> 204
- *   PUT  {tenantPath}  body = {status}     -> 204   (admin-only operation)
+ *   GET    {menuPath}/{menuId}                     -> Menu JSON or 404
+ *   POST   {menuPath}            body = Menu JSON  -> 201 { menuId }
+ *   POST   {menuPath}/{menuId}/preview body = Menu -> 201 { menuId }
+ *   PUT    {menuPath}/{menuId}   body = Menu JSON  -> 204
+ *   PATCH  {menuPath}/{menuId}   body = { nextStatus } -> 204
+ *   DELETE {menuPath}/{menuId}                     -> 204
+ *   GET    {menuMetadataPath}                      -> metadata grouped by status
+ *   PATCH  {tenantPath}          body = { status } -> 204  (admin-only)
  *
  * Auth: Bearer <idToken>. The target sub-tenant (chosen from the token's
  * `custom:subtenants` claim) is sent via the `sub-tenant` header. */
@@ -98,32 +103,64 @@
       .then(function (res) { return res.json(); });
   }
 
-  function getMenu(menuId, status) {
+  // GET /menu/{menuId} — returns null when the menu does not exist (404).
+  function getMenu(menuId) {
     var id = encodeURIComponent(menuId);
-    var s = encodeURIComponent(status || "Active");
-    return request(cfg().menuPath + "?menuId=" + id + "&status=" + s, { method: "GET" })
+    return request(cfg().menuPath + "/" + id, { method: "GET" })
       .then(function (res) { return res.json(); })
-      .then(function (menu) {
-        // The API returns "{}" when no menu exists for the tenant/status.
-        if (!menu || Object.keys(menu).length === 0) return null;
-        return menu;
+      .catch(function (err) {
+        if (err.status === 404) return null;
+        throw err;
       });
   }
 
-  function saveMenu(menu) {
+  // POST /menu — creates a new menu (server assigns Id, initial status=Disabled).
+  // Resolves with { menuId } from the 201 response body.
+  function createMenu(menu) {
     return request(cfg().menuPath, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(menu)
+    }).then(function (res) { return res.json(); });
+  }
+
+  // PUT /menu/{menuId} — replaces the menu body (does not change status).
+  function updateMenu(menuId, menu) {
+    var id = encodeURIComponent(menuId);
+    return request(cfg().menuPath + "/" + id, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(menu)
     }).then(function () { return true; });
   }
 
-  function previewMenu(menu) {
-    var payload = Object.assign({}, menu, { Status: "preview" });
-    return request(cfg().menuPath, {
-      method: "PUT",
+  // PATCH /menu/{menuId} — transitions the menu status.
+  // nextStatus: "active" | "disabled" | "deleted"
+  function setMenuStatus(menuId, nextStatus) {
+    var id = encodeURIComponent(menuId);
+    return request(cfg().menuPath + "/" + id, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ nextStatus: nextStatus })
+    }).then(function () { return true; });
+  }
+
+  // POST /menu/{menuId}/preview — stores an ephemeral preview copy.
+  // Resolves with { menuId } — the server-assigned preview ID for the URL.
+  function previewMenu(menuId, menu) {
+    var id = encodeURIComponent(menuId);
+    return request(cfg().menuPath + "/" + id + "/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(menu)
+    }).then(function (res) { return res.json(); });
+  }
+
+  // DELETE /menu/{menuId} — soft-deletes the menu (status → Deleted).
+  function deleteMenu(menuId) {
+    var id = encodeURIComponent(menuId);
+    return request(cfg().menuPath + "/" + id, {
+      method: "DELETE"
     }).then(function () { return true; });
   }
 
@@ -141,8 +178,11 @@
   window.AkutApi = {
     getMenuMetadata: getMenuMetadata,
     getMenu: getMenu,
-    saveMenu: saveMenu,
+    createMenu: createMenu,
+    updateMenu: updateMenu,
+    setMenuStatus: setMenuStatus,
     previewMenu: previewMenu,
+    deleteMenu: deleteMenu,
     setTenantStatus: setTenantStatus,
     getSubTenant: getSubTenant,
     setSubTenant: setSubTenant

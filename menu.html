@@ -30,9 +30,10 @@ app_scripts:
       <button type="button" class="btn btn-ghost btn-sm" id="backToListBtn" data-i18n="menu.backToList">← Menus</button>
       <label class="field-inline">
         <span class="field-label" data-i18n="menu.editing">Editing</span>
-        <select id="statusSelect">
-          <option value="Active" data-i18n="menu.activeMenu">Active menu</option>
-          <option value="Draft" data-i18n="menu.draft">Draft</option>
+        <select id="statusSelect" disabled>
+          <option value="Active" data-i18n="menu.list.status.Active">Active</option>
+          <option value="Disabled" data-i18n="menu.list.status.Disabled">Disabled</option>
+          <option value="Deleted" data-i18n="menu.list.status.Deleted">Deleted</option>
         </select>
       </label>
       <button type="button" class="btn btn-secondary" id="loadBtn" data-i18n="menu.load">Reload</button>
@@ -43,7 +44,7 @@ app_scripts:
         <button type="button" class="seg is-active" id="formTab" data-i18n="menu.form">Form</button>
         <button type="button" class="seg" id="jsonTab" data-i18n="menu.json">JSON</button>
       </div>
-      <button type="button" class="btn btn-secondary" id="saveDraftBtn" data-i18n="menu.saveDraft">Save as draft</button>
+      <button type="button" class="btn btn-secondary" id="saveDraftBtn" data-i18n="menu.saveDraft">Save</button>
       <button type="button" class="btn btn-secondary" id="previewBtn" data-i18n="menu.preview">Preview</button>
       <button type="button" class="btn btn-primary" id="publishBtn" data-i18n="menu.publish">Publish (Active)</button>
     </div>
@@ -64,15 +65,3 @@ app_scripts:
   </div>
 </div>
 
-<!-- ── Publish conflict modal ───────────────────────────────────── -->
-<div id="publishConflictOverlay" class="modal-overlay" hidden>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="publishConflictTitle">
-    <h3 id="publishConflictTitle" data-i18n="menu.publish.conflictTitle">Active menu conflict</h3>
-    <p data-i18n="menu.publish.conflictDesc">An active menu already exists with this ID. Choose how to proceed.</p>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-danger" id="publishReplaceBtn" data-i18n="menu.publish.replace">Replace active menu</button>
-      <button type="button" class="btn btn-primary" id="publishNewBtn" data-i18n="menu.publish.new">Create new active menu</button>
-      <button type="button" class="btn btn-ghost" id="publishCancelBtn" data-i18n="menu.publish.cancel">Cancel</button>
-    </div>
-  </div>
-</div>
