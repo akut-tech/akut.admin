@@ -37,6 +37,9 @@
     refs.saveBtn       = document.getElementById("saveDraftBtn");
     refs.publishBtn    = document.getElementById("publishBtn");
     refs.previewBtn    = document.getElementById("previewBtn");
+    refs.disableMenuBtn  = document.getElementById("disableMenuBtn");
+    refs.deleteMenuBtn   = document.getElementById("deleteMenuBtn");
+    refs.restoreMenuBtn  = document.getElementById("restoreMenuBtn");
     refs.menuAlert     = document.getElementById("menuAlert");
     refs.loadingState  = document.getElementById("editorLoading");
     refs.emptyState    = document.getElementById("editorEmpty");
@@ -58,6 +61,9 @@
     refs.backToListBtn.addEventListener("click", function () {
       window.MenuList && window.MenuList.showListView();
     });
+    if (refs.disableMenuBtn) refs.disableMenuBtn.addEventListener("click", disableMenu);
+    if (refs.deleteMenuBtn)  refs.deleteMenuBtn.addEventListener("click",  deleteMenu);
+    if (refs.restoreMenuBtn) refs.restoreMenuBtn.addEventListener("click", restoreMenu);
 
     // Expose editor API — called by menu-list.js on item click or "New menu"
     window.MenuEditor = {
@@ -69,6 +75,7 @@
         openCats  = {};
         openItems = {};
         if (refs.statusSelect) refs.statusSelect.value = state.status;
+        updateStatusButtons();
         load();
       },
       newMenu: function () {
@@ -146,6 +153,7 @@
       Categories: []
     };
     if (refs.statusSelect) refs.statusSelect.value = state.status;
+    updateStatusButtons();
     render();
   }
 
@@ -711,6 +719,74 @@
     var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
   }
 
+  // ---- Status button visibility -------------------------------------------
+  function updateStatusButtons() {
+    var isNew      = !state.menuId;
+    var isActive   = state.status === "Active";
+    var isDisabled = state.status === "Disabled";
+    var isDeleted  = state.status === "Deleted";
+    if (refs.disableMenuBtn)  refs.disableMenuBtn.hidden  = isNew || !isActive;
+    if (refs.deleteMenuBtn)   refs.deleteMenuBtn.hidden   = isNew || !isDisabled;
+    if (refs.restoreMenuBtn)  refs.restoreMenuBtn.hidden  = isNew || !isDeleted;
+    // Editing a deleted menu is read-only — save/publish are blocked server-side anyway.
+    refs.saveBtn.disabled    = isDeleted;
+    refs.publishBtn.disabled = isDeleted;
+  }
+
+  // ---- Disable / Delete from editor ---------------------------------------
+  function disableMenu() {
+    if (!state.menuId) return;
+    if (!confirm(t("menu.confirmDisable"))) return;
+    setBusy(true);
+    refs.disableMenuBtn.textContent = t("menu.disabling");
+    AkutApi.setMenuStatus(state.menuId, "disabled")
+      .then(function () {
+        state.status = "Disabled";
+        if (refs.statusSelect) refs.statusSelect.value = state.status;
+        updateStatusButtons();
+        alert("success", t("menu.disabledSuccess"));
+      })
+      .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+      .finally(function () {
+        setBusy(false);
+        if (refs.disableMenuBtn) refs.disableMenuBtn.textContent = t("menu.disable");
+      });
+  }
+
+  function deleteMenu() {
+    if (!state.menuId) return;
+    if (!confirm(t("menu.confirmDelete"))) return;
+    setBusy(true);
+    refs.deleteMenuBtn.textContent = t("menu.deleting");
+    AkutApi.deleteMenu(state.menuId)
+      .then(function () {
+        window.MenuList && window.MenuList.showListView();
+      })
+      .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+      .finally(function () {
+        setBusy(false);
+        if (refs.deleteMenuBtn) refs.deleteMenuBtn.textContent = t("menu.delete");
+      });
+  }
+
+  function restoreMenu() {
+    if (!state.menuId) return;
+    setBusy(true);
+    refs.restoreMenuBtn.textContent = t("menu.restoring");
+    AkutApi.setMenuStatus(state.menuId, "disabled")
+      .then(function () {
+        state.status = "Disabled";
+        if (refs.statusSelect) refs.statusSelect.value = state.status;
+        updateStatusButtons();
+        alert("success", t("menu.restoredSuccess"));
+      })
+      .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+      .finally(function () {
+        setBusy(false);
+        if (refs.restoreMenuBtn) refs.restoreMenuBtn.textContent = t("menu.restore");
+      });
+  }
+
   // ---- Preview ------------------------------------------------------------
   function preview() {
     if (!state.menu) { alert("error", t("menu.errorNothingToSave")); return; }
@@ -768,6 +844,7 @@
           return AkutApi.setMenuStatus(state.menuId, "active").then(function () {
             state.status = "Active";
             if (refs.statusSelect) refs.statusSelect.value = state.status;
+            updateStatusButtons();
             alert("success", t("menu.savedAs", { status: t("menu.status.Active") }));
           });
         })
@@ -785,6 +862,7 @@
           return AkutApi.setMenuStatus(state.menuId, "active").then(function () {
             state.status = "Active";
             if (refs.statusSelect) refs.statusSelect.value = state.status;
+            updateStatusButtons();
             alert("success", t("menu.savedAs", { status: t("menu.status.Active") }));
           });
         })
@@ -806,9 +884,13 @@
   }
 
   function setBusy(busy) {
-    refs.saveBtn.disabled = busy;
-    refs.publishBtn.disabled = busy;
-    if (refs.previewBtn) refs.previewBtn.disabled = busy;
+    var isDeleted = state.status === "Deleted";
+    refs.saveBtn.disabled    = busy || isDeleted;
+    refs.publishBtn.disabled = busy || isDeleted;
+    if (refs.previewBtn)     refs.previewBtn.disabled     = busy;
+    if (refs.disableMenuBtn) refs.disableMenuBtn.disabled = busy;
+    if (refs.deleteMenuBtn)  refs.deleteMenuBtn.disabled  = busy;
+    if (refs.restoreMenuBtn) refs.restoreMenuBtn.disabled = busy;
     refs.publishBtn.textContent = busy ? t("menu.saving") : t("menu.publish");
   }
 

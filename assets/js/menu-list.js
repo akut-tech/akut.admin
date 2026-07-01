@@ -43,7 +43,7 @@
 
   function render(data) {
     refs.root.innerHTML = "";
-    var statuses = ["Active", "Disabled"];
+    var statuses = ["Active", "Disabled", "Deleted"];
     var hasAny = false;
     statuses.forEach(function (status) {
       var items = data[status] || [];
@@ -54,7 +54,9 @@
   }
 
   function renderSection(status, items) {
-    var badgeClass = "badge" + (status === "Active" ? " badge-success" : "");
+    var badgeClass = status === "Active"  ? "badge badge-success"
+                   : status === "Deleted" ? "badge badge-danger"
+                   : "badge";
     var header = h("div", { "class": "menu-group-header" }, [
       h("h2", null, [h("span", { "class": badgeClass }, [t("menu.list.status." + status)])])
     ]);
@@ -85,33 +87,102 @@
       });
   }
 
+  // Renders an inline action button; disables itself and shows loadingKey text while working.
+  function statusActionBtn(labelKey, loadingKey, cssClass, onClick) {
+    var btn = h("button", { "class": "btn btn-sm " + cssClass });
+    btn.textContent = t(labelKey);
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      btn.disabled = true;
+      btn.textContent = t(loadingKey);
+      onClick(btn, labelKey);
+    });
+    return btn;
+  }
+
   function renderMenuItem(item, status) {
     var updatedAt = formatDate(item.UpdatedAt);
-    var metaChildren = [
-      h("span", null, [t("menu.list.updatedBy") + ": " + item.UpdatedBy]),
-      h("span", { "class": "menu-item-date" }, [updatedAt])
-    ];
+    var actionBtns = [];
+
     if (status === "Active") {
       var tenant = AkutApi.getSubTenant();
       var publishedUrl = "https://menu.akut.pt/" + encodeURIComponent(tenant) + "/" + encodeURIComponent(item.Id);
-      metaChildren.unshift(h("a", {
+      actionBtns.push(h("a", {
         "class": "btn btn-ghost btn-sm",
         href: publishedUrl,
         target: "_blank",
         rel: "noopener noreferrer",
         onclick: function (e) { e.stopPropagation(); }
       }, [t("menu.list.viewPublished")]));
-    }
-    if (status === "Disabled") {
-      var previewBtn = h("button", {
-        "class": "btn btn-ghost btn-sm",
-        onclick: function (e) {
-          e.stopPropagation();
-          previewFromList(item.Id, previewBtn);
+
+      actionBtns.push(statusActionBtn("menu.list.disable", "menu.list.disabling", "btn-secondary", function (btn, labelKey) {
+        if (!confirm(t("menu.list.confirmDisable"))) {
+          btn.disabled = false;
+          btn.textContent = t(labelKey);
+          return;
         }
-      }, [t("menu.list.preview")]);
-      metaChildren.unshift(previewBtn);
+        AkutApi.setMenuStatus(item.Id, "disabled")
+          .then(function () { loadMetadata(); })
+          .catch(function (err) {
+            showAlert("error", err.message || t("menu.errorSave"));
+            btn.disabled = false;
+            btn.textContent = t(labelKey);
+          });
+      }));
     }
+
+    if (status === "Disabled") {
+      var previewBtn = h("button", { "class": "btn btn-ghost btn-sm" });
+      previewBtn.textContent = t("menu.list.preview");
+      previewBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        previewFromList(item.Id, previewBtn);
+      });
+      actionBtns.push(previewBtn);
+
+      actionBtns.push(statusActionBtn("menu.list.activate", "menu.list.activating", "btn-primary", function (btn, labelKey) {
+        AkutApi.setMenuStatus(item.Id, "active")
+          .then(function () { loadMetadata(); })
+          .catch(function (err) {
+            showAlert("error", err.message || t("menu.errorSave"));
+            btn.disabled = false;
+            btn.textContent = t(labelKey);
+          });
+      }));
+
+      actionBtns.push(statusActionBtn("menu.list.delete", "menu.list.deleting", "btn-danger", function (btn, labelKey) {
+        if (!confirm(t("menu.list.confirmDelete"))) {
+          btn.disabled = false;
+          btn.textContent = t(labelKey);
+          return;
+        }
+        AkutApi.deleteMenu(item.Id)
+          .then(function () { loadMetadata(); })
+          .catch(function (err) {
+            showAlert("error", err.message || t("menu.errorSave"));
+            btn.disabled = false;
+            btn.textContent = t(labelKey);
+          });
+      }));
+    }
+
+    if (status === "Deleted") {
+      actionBtns.push(statusActionBtn("menu.list.restore", "menu.list.restoring", "btn-secondary", function (btn, labelKey) {
+        AkutApi.setMenuStatus(item.Id, "disabled")
+          .then(function () { loadMetadata(); })
+          .catch(function (err) {
+            showAlert("error", err.message || t("menu.errorSave"));
+            btn.disabled = false;
+            btn.textContent = t(labelKey);
+          });
+      }));
+    }
+
+    var metaChildren = actionBtns.concat([
+      h("span", null, [t("menu.list.updatedBy") + ": " + item.UpdatedBy]),
+      h("span", { "class": "menu-item-date" }, [updatedAt])
+    ]);
+
     var el = h("div", { "class": "menu-list-item", role: "button", tabindex: "0" }, [
       h("div", { "class": "menu-item-name" }, [item.Name]),
       h("div", { "class": "menu-item-meta" }, metaChildren)
