@@ -87,15 +87,26 @@
       });
   }
 
-  // Renders an inline action button; disables itself and shows loadingKey text while working.
-  function statusActionBtn(labelKey, loadingKey, cssClass, onClick) {
+  // Renders an inline action button.
+  // Pass confirmOpts = { title, message, confirmLabel, confirmClass } to show a
+  // confirmation modal before acting; pass null for immediate (non-destructive) actions.
+  function statusActionBtn(labelKey, loadingKey, cssClass, confirmOpts, onAction) {
     var btn = h("button", { "class": "btn btn-sm " + cssClass });
     btn.textContent = t(labelKey);
     btn.addEventListener("click", function (e) {
       e.stopPropagation();
-      btn.disabled = true;
-      btn.textContent = t(loadingKey);
-      onClick(btn, labelKey);
+      if (confirmOpts) {
+        window.AkutConfirm(confirmOpts).then(function (ok) {
+          if (!ok) return;
+          btn.disabled = true;
+          btn.textContent = t(loadingKey);
+          onAction(btn, labelKey);
+        });
+      } else {
+        btn.disabled = true;
+        btn.textContent = t(loadingKey);
+        onAction(btn, labelKey);
+      }
     });
     return btn;
   }
@@ -115,20 +126,17 @@
         onclick: function (e) { e.stopPropagation(); }
       }, [t("menu.list.viewPublished")]));
 
-      actionBtns.push(statusActionBtn("menu.list.disable", "menu.list.disabling", "btn-secondary", function (btn, labelKey) {
-        if (!confirm(t("menu.list.confirmDisable"))) {
-          btn.disabled = false;
-          btn.textContent = t(labelKey);
-          return;
-        }
-        AkutApi.setMenuStatus(item.Id, "disabled")
-          .then(function () { loadMetadata(); })
-          .catch(function (err) {
-            showAlert("error", err.message || t("menu.errorSave"));
-            btn.disabled = false;
-            btn.textContent = t(labelKey);
-          });
-      }));
+      actionBtns.push(statusActionBtn("menu.list.disable", "menu.list.disabling", "btn-secondary",
+        { title: t("menu.list.disable"), message: t("menu.list.confirmDisable"), confirmLabel: t("menu.list.disable"), confirmClass: "btn-secondary" },
+        function (btn, labelKey) {
+          AkutApi.setMenuStatus(item.Id, "disabled")
+            .then(function () { loadMetadata(); })
+            .catch(function (err) {
+              showAlert("error", err.message || t("menu.errorSave"));
+              btn.disabled = false;
+              btn.textContent = t(labelKey);
+            });
+        }));
     }
 
     if (status === "Disabled") {
@@ -140,48 +148,55 @@
       });
       actionBtns.push(previewBtn);
 
-      actionBtns.push(statusActionBtn("menu.list.activate", "menu.list.activating", "btn-primary", function (btn, labelKey) {
-        AkutApi.setMenuStatus(item.Id, "active")
-          .then(function () { loadMetadata(); })
-          .catch(function (err) {
-            showAlert("error", err.message || t("menu.errorSave"));
-            btn.disabled = false;
-            btn.textContent = t(labelKey);
-          });
-      }));
+      actionBtns.push(statusActionBtn("menu.list.activate", "menu.list.activating", "btn-primary",
+        null,
+        function (btn, labelKey) {
+          AkutApi.setMenuStatus(item.Id, "active")
+            .then(function () { loadMetadata(); })
+            .catch(function (err) {
+              showAlert("error", err.message || t("menu.errorSave"));
+              btn.disabled = false;
+              btn.textContent = t(labelKey);
+            });
+        }));
 
-      actionBtns.push(statusActionBtn("menu.list.delete", "menu.list.deleting", "btn-danger", function (btn, labelKey) {
-        if (!confirm(t("menu.list.confirmDelete"))) {
-          btn.disabled = false;
-          btn.textContent = t(labelKey);
-          return;
-        }
-        AkutApi.deleteMenu(item.Id)
-          .then(function () { loadMetadata(); })
-          .catch(function (err) {
-            showAlert("error", err.message || t("menu.errorSave"));
-            btn.disabled = false;
-            btn.textContent = t(labelKey);
-          });
-      }));
+      actionBtns.push(statusActionBtn("menu.list.delete", "menu.list.deleting", "btn-danger",
+        { title: t("menu.list.delete"), message: t("menu.list.confirmDelete"), confirmLabel: t("menu.list.delete"), confirmClass: "btn-danger" },
+        function (btn, labelKey) {
+          AkutApi.deleteMenu(item.Id)
+            .then(function () { loadMetadata(); })
+            .catch(function (err) {
+              showAlert("error", err.message || t("menu.errorSave"));
+              btn.disabled = false;
+              btn.textContent = t(labelKey);
+            });
+        }));
     }
 
     if (status === "Deleted") {
-      actionBtns.push(statusActionBtn("menu.list.restore", "menu.list.restoring", "btn-secondary", function (btn, labelKey) {
-        AkutApi.setMenuStatus(item.Id, "disabled")
-          .then(function () { loadMetadata(); })
-          .catch(function (err) {
-            showAlert("error", err.message || t("menu.errorSave"));
-            btn.disabled = false;
-            btn.textContent = t(labelKey);
-          });
-      }));
+      var days = restoreDaysLeft(item.UpdatedAt);
+      var expired = days !== null && days < 0;
+
+      var restoreBtn = statusActionBtn("menu.list.restore", "menu.list.restoring", "btn-secondary",
+        null,
+        function (btn, labelKey) {
+          AkutApi.setMenuStatus(item.Id, "disabled")
+            .then(function () { loadMetadata(); })
+            .catch(function (err) {
+              showAlert("error", err.message || t("menu.errorSave"));
+              btn.disabled = false;
+              btn.textContent = t(labelKey);
+            });
+        });
+      if (expired) restoreBtn.disabled = true;
+      actionBtns.push(restoreBtn);
     }
 
     var metaChildren = actionBtns.concat([
+      status === "Deleted" ? restoreCountdown(item.UpdatedAt) : null,
       h("span", null, [t("menu.list.updatedBy") + ": " + item.UpdatedBy]),
       h("span", { "class": "menu-item-date" }, [updatedAt])
-    ]);
+    ].filter(Boolean));
 
     var el = h("div", { "class": "menu-list-item", role: "button", tabindex: "0" }, [
       h("div", { "class": "menu-item-name" }, [item.Name]),
@@ -193,6 +208,49 @@
     }
     el.addEventListener("click", open);
     el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") open(); });
+    return el;
+  }
+
+  var RESTORE_WINDOW_DAYS = 30;
+
+  // Returns full days remaining in the restore window, or null if UpdatedAt is absent.
+  // Negative means the window has already closed.
+  function restoreDaysLeft(updatedAt) {
+    if (!updatedAt) return null;
+    var deletedMs = new Date(updatedAt).getTime();
+    if (isNaN(deletedMs)) return null;
+    var remainingMs = (deletedMs + RESTORE_WINDOW_DAYS * 864e5) - Date.now();
+    return Math.floor(remainingMs / 864e5);
+  }
+
+  // Renders a countdown badge for the restore window.
+  function restoreCountdown(updatedAt) {
+    var days = restoreDaysLeft(updatedAt);
+    if (days === null) return null;
+
+    var text, cssColor;
+    if (days < 0) {
+      text     = t("menu.list.restoreExpired");
+      cssColor = "var(--danger)";
+    } else if (days === 0) {
+      text     = t("menu.list.restoreToday");
+      cssColor = "var(--danger)";
+    } else if (days === 1) {
+      text     = t("menu.list.restoreDayLeft");
+      cssColor = "var(--danger)";
+    } else if (days <= 7) {
+      text     = t("menu.list.restoreDaysLeft", { n: days });
+      cssColor = "var(--warning)";
+    } else {
+      text     = t("menu.list.restoreDaysLeft", { n: days });
+      cssColor = "var(--muted)";
+    }
+
+    var el = document.createElement("span");
+    el.textContent = text;
+    el.style.color = cssColor;
+    el.style.fontSize = "12px";
+    el.style.fontWeight = "600";
     return el;
   }
 

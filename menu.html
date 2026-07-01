@@ -7,6 +7,7 @@ subheading: Select a menu to edit or create a new one
 permalink: /menu/
 app_scripts:
   - /assets/js/api.js
+  - /assets/js/confirm.js
   - /assets/js/menu-list.js
   - /assets/js/menu.js
 ---
@@ -68,3 +69,14 @@ app_scripts:
   </div>
 </div>
 
+<!-- ── Confirm modal ─────────────────────────────────────────────── -->
+<div id="confirmModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle" hidden>
+  <div class="modal-card">
+    <h3 id="confirmModalTitle"></h3>
+    <p  id="confirmModalMessage"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-block btn-primary" id="confirmModalOk"></button>
+      <button type="button" class="btn btn-ghost btn-block"   id="confirmModalCancel" data-i18n="confirm.cancel">Cancel</button>
+    </div>
+  </div>
+</div>

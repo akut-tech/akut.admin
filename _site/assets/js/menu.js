@@ -736,37 +736,51 @@
   // ---- Disable / Delete from editor ---------------------------------------
   function disableMenu() {
     if (!state.menuId) return;
-    if (!confirm(t("menu.confirmDisable"))) return;
-    setBusy(true);
-    refs.disableMenuBtn.textContent = t("menu.disabling");
-    AkutApi.setMenuStatus(state.menuId, "disabled")
-      .then(function () {
-        state.status = "Disabled";
-        if (refs.statusSelect) refs.statusSelect.value = state.status;
-        updateStatusButtons();
-        alert("success", t("menu.disabledSuccess"));
-      })
-      .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
-      .finally(function () {
-        setBusy(false);
-        if (refs.disableMenuBtn) refs.disableMenuBtn.textContent = t("menu.disable");
-      });
+    window.AkutConfirm({
+      title:        t("menu.disable"),
+      message:      t("menu.confirmDisable"),
+      confirmLabel: t("menu.disable"),
+      confirmClass: "btn-secondary"
+    }).then(function (ok) {
+      if (!ok) return;
+      setBusy(true);
+      refs.disableMenuBtn.textContent = t("menu.disabling");
+      AkutApi.setMenuStatus(state.menuId, "disabled")
+        .then(function () {
+          state.status = "Disabled";
+          if (refs.statusSelect) refs.statusSelect.value = state.status;
+          updateStatusButtons();
+          alert("success", t("menu.disabledSuccess"));
+        })
+        .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+        .finally(function () {
+          setBusy(false);
+          if (refs.disableMenuBtn) refs.disableMenuBtn.textContent = t("menu.disable");
+        });
+    });
   }
 
   function deleteMenu() {
     if (!state.menuId) return;
-    if (!confirm(t("menu.confirmDelete"))) return;
-    setBusy(true);
-    refs.deleteMenuBtn.textContent = t("menu.deleting");
-    AkutApi.deleteMenu(state.menuId)
-      .then(function () {
-        window.MenuList && window.MenuList.showListView();
-      })
-      .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
-      .finally(function () {
-        setBusy(false);
-        if (refs.deleteMenuBtn) refs.deleteMenuBtn.textContent = t("menu.delete");
-      });
+    window.AkutConfirm({
+      title:        t("menu.delete"),
+      message:      t("menu.confirmDelete"),
+      confirmLabel: t("menu.delete"),
+      confirmClass: "btn-danger"
+    }).then(function (ok) {
+      if (!ok) return;
+      setBusy(true);
+      refs.deleteMenuBtn.textContent = t("menu.deleting");
+      AkutApi.deleteMenu(state.menuId)
+        .then(function () {
+          window.MenuList && window.MenuList.showListView();
+        })
+        .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+        .finally(function () {
+          setBusy(false);
+          if (refs.deleteMenuBtn) refs.deleteMenuBtn.textContent = t("menu.delete");
+        });
+    });
   }
 
   function restoreMenu() {
