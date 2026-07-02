@@ -10,6 +10,7 @@
 <!-- App config is generated from _config.yml -> assets/js/config.js -->
 <script src="/assets/js/config.js"></script>
 <script src="/assets/js/i18n.js"></script>
+<script src="/assets/js/theme.js"></script>
 <script src="/assets/js/auth.js"></script>
 
 </head>
@@ -26,6 +27,10 @@
     <a class="nav-link" href="/tenant/" data-nav="tenant" data-i18n="nav.tenant">Tenant</a>
   </nav>
   <div class="sidebar-footer">
+    <button type="button" class="btn btn-ghost btn-block theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Toggle theme">
+      <span class="theme-icon" aria-hidden="true">☀️</span>
+      <span class="theme-label">Light</span>
+    </button>
     <div class="lang-switcher">
       <button type="button" class="lang-btn" data-lang-btn="en" onclick="AkutI18n.setLang('en')">EN</button>
       <button type="button" class="lang-btn" data-lang-btn="pt" onclick="AkutI18n.setLang('pt')">PT</button>

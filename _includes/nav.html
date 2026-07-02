@@ -10,6 +10,10 @@
     <a class="nav-link" href="{{ '/tenant/' | relative_url }}" data-nav="tenant" data-i18n="nav.tenant">Tenant</a>
   </nav>
   <div class="sidebar-footer">
+    <button type="button" class="btn btn-ghost btn-block theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Toggle theme">
+      <span class="theme-icon" aria-hidden="true">☀️</span>
+      <span class="theme-label">Light</span>
+    </button>
     <div class="lang-switcher">
       <button type="button" class="lang-btn" data-lang-btn="en" onclick="AkutI18n.setLang('en')">EN</button>
       <button type="button" class="lang-btn" data-lang-btn="pt" onclick="AkutI18n.setLang('pt')">PT</button>

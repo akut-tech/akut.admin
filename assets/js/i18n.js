@@ -12,6 +12,9 @@
       "nav.tenant": "Tenant",
       "nav.signOut": "Sign out",
 
+      "theme.light": "Light",
+      "theme.dark": "Dark",
+
       "login.brand": "Akut Admin",
       "login.tagline": "Manage menus & tenants",
       "login.username": "Username",
@@ -254,6 +257,9 @@
       "nav.menu": "Cardápio",
       "nav.tenant": "Clientes",
       "nav.signOut": "Sair",
+
+      "theme.light": "Claro",
+      "theme.dark": "Escuro",
 
       "login.brand": "Akut Admin",
       "login.tagline": "Gerenciar cardápios e clientes",
@@ -556,6 +562,9 @@
       el = els[i];
       el.classList.toggle("is-active", el.getAttribute("data-lang-btn") === lang);
     }
+
+    // Let other components (e.g. theme toggle) re-render localized labels.
+    document.dispatchEvent(new CustomEvent("akut:langchange", { detail: { lang: lang } }));
   }
 
   document.addEventListener("DOMContentLoaded", applyTranslations);
