@@ -160,9 +160,14 @@
   function normalize(menu) {
     menu.Name = menu.Name || {};
     menu.Categories = menu.Categories || [];
+    // Order is not user-editable — it's derived from position (via the up/down
+    // arrows). Sort by the stored Order on load so positions match, then let
+    // sanitize() rewrite Order from the array index on save.
+    menu.Categories.sort(byOrder);
     menu.Categories.forEach(function (cat) {
       cat.Name = cat.Name || {};
       cat.Items = cat.Items || [];
+      cat.Items.sort(byOrder);
       cat.Items.forEach(function (item) {
         // Discard legacy free-text allergens (Translations object) — cannot map reliably
         if (item.Allergens && !Array.isArray(item.Allergens)) {
@@ -265,10 +270,6 @@
   function renderCategory(cat, ci) {
     var m = state.menu;
     var body = h("div", { class: "accordion-body" }, [
-      grid2([
-        numberField(t("menu.order"), cat.Order, function (v) { cat.Order = intOr(v, 0); }),
-        null
-      ]),
       translationsField(t("menu.name"), cat.Name, function (tr) { cat.Name = tr; }),
       translationsField(t("menu.description"), cat.Description || {}, function (tr) {
         cat.Description = isEmptyTranslations(tr) ? null : tr;
@@ -308,8 +309,8 @@
   function renderItem(cat, item, ii) {
     var body = h("div", { class: "accordion-body" }, [
       grid2([
-        numberField(t("menu.order"), item.Order, function (v) { item.Order = intOr(v, 0); }),
-        priceField(t("menu.price"), item.Price, function (v) { item.Price = floatOr(v, 0); })
+        priceField(t("menu.price"), item.Price, function (v) { item.Price = floatOr(v, 0); }),
+        null
       ]),
       tagField(t("menu.tag"), item.Tag, function (v) { item.Tag = v; }),
       translationsField(t("menu.name"), item.Name, function (tr) { item.Name = tr; }),
@@ -384,14 +385,6 @@
       field(label + (opts.required ? " *" : ""), input, opts.help),
       datalist
     ]);
-  }
-
-  function numberField(label, value, onChange) {
-    var input = h("input", {
-      type: "number", value: value == null ? "" : value, step: "1",
-      oninput: function (e) { onChange(e.target.value); }
-    });
-    return field(label, input);
   }
 
   function priceField(label, value, onChange) {
@@ -719,6 +712,8 @@
     var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
   }
 
+  function byOrder(a, b) { return intOr(a && a.Order, 0) - intOr(b && b.Order, 0); }
+
   // ---- Status button visibility -------------------------------------------
   function updateStatusButtons() {
     var isNew      = !state.menuId;
@@ -923,17 +918,18 @@
       TemplateId: menu.TemplateId || "",
       DefaultLanguage: Number(menu.DefaultLanguage),
       Currency: Number(menu.Currency),
-      Categories: (menu.Categories || []).map(function (cat) {
+      Categories: (menu.Categories || []).map(function (cat, ci) {
         return {
           Id: cat.Id || uuid(),
-          Order: intOr(cat.Order, 0),
+          // Order reflects the current position — set by the up/down arrows.
+          Order: ci,
           Name: cleanTranslations(cat.Name),
           Description: cleanTranslationsOrNull(cat.Description),
 
-          Items: (cat.Items || []).map(function (item) {
+          Items: (cat.Items || []).map(function (item, ii) {
             return {
               Id: item.Id || uuid(),
-              Order: intOr(item.Order, 0),
+              Order: ii,
               Diets: (item.Diets && item.Diets.length) ? item.Diets.map(Number) : null,
               Images: cleanImages(item.Images),
               YouTubeVideoUrls: (item.YouTubeVideoUrls && item.YouTubeVideoUrls.length)
