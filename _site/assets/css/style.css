@@ -272,7 +272,7 @@ textarea { resize: vertical; }
 .icon-btn:hover { color: var(--text); border-color: var(--primary); }
 
 /* ---------- Alerts & badges ---------- */
-.alert { border-radius: var(--radius-sm); padding: 11px 14px; font-size: 14px; margin-bottom: 16px; }
+.alert { border-radius: var(--radius-sm); padding: 11px 14px; font-size: 14px; margin-bottom: 16px; white-space: pre-line; }
 .alert-error { background: rgba(239, 83, 80, 0.12); color: #ff9b99; border: 1px solid rgba(239, 83, 80, 0.4); }
 .alert-success { background: rgba(47, 191, 113, 0.12); color: #7fe3ab; border: 1px solid rgba(47, 191, 113, 0.4); }
 .alert-info { background: rgba(79, 140, 255, 0.12); color: #aac6ff; border: 1px solid rgba(79, 140, 255, 0.4); }

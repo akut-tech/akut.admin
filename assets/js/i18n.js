@@ -243,7 +243,9 @@
       "errors.OPERATION_FORBIDDEN": "You are not allowed to perform this action.",
       "errors.OPERATION_NOT_ALLOWED": "This operation is not allowed.",
       "errors.MENU_NOT_FOUND": "Menu not found.",
-      "errors.UNEXPECTED_ERROR": "An unexpected error occurred. Please try again."
+      "errors.UNEXPECTED_ERROR": "An unexpected error occurred. Please try again.",
+      "errors.titleOne": "1 error found:",
+      "errors.titleMany": "{count} errors found:"
     },
 
     pt: {
@@ -484,7 +486,9 @@
       "errors.OPERATION_FORBIDDEN": "Você não tem permissão para realizar esta ação.",
       "errors.OPERATION_NOT_ALLOWED": "Esta operação não é permitida.",
       "errors.MENU_NOT_FOUND": "Cardápio não encontrado.",
-      "errors.UNEXPECTED_ERROR": "Ocorreu um erro inesperado. Tente novamente."
+      "errors.UNEXPECTED_ERROR": "Ocorreu um erro inesperado. Tente novamente.",
+      "errors.titleOne": "1 erro encontrado:",
+      "errors.titleMany": "{count} erros encontrados:"
     }
   };
 

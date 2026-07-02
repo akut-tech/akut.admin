@@ -69,9 +69,19 @@
     if (res.ok) return res;
     return res.text().then(function (text) {
       var errors = parseErrorBody(text);
-      var message = errors
-        ? errors.map(translateError).join(" ")
-        : (window.t ? window.t("errors.UNEXPECTED_ERROR") : "An unexpected error occurred.");
+      var message;
+      if (errors) {
+        var title = errors.length === 1
+          ? (window.t ? window.t("errors.titleOne") : "1 error found:")
+          : (window.t ? window.t("errors.titleMany", { count: errors.length })
+                      : errors.length + " errors found:");
+        var lines = errors.map(function (item, i) {
+          return (i + 1) + ". " + translateError(item);
+        });
+        message = title + "\n" + lines.join("\n");
+      } else {
+        message = window.t ? window.t("errors.UNEXPECTED_ERROR") : "An unexpected error occurred.";
+      }
       var err = new Error(message);
       err.status = res.status;
       err.errors = errors || [];
