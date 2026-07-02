@@ -41,22 +41,42 @@
     return (cfg().apiBaseUrl || "").replace(/\/$/, "") + path;
   }
 
+  // Translate a single { code, message } error item. Prefer the localized text
+  // for the code; fall back to the server-provided message, then a generic one.
+  function translateError(item) {
+    var code = item && item.code;
+    var serverMsg = item && item.message;
+    if (code && window.t) {
+      var key = "errors." + code;
+      var translated = window.t(key);
+      if (translated !== key) return translated;
+    }
+    if (serverMsg) return serverMsg;
+    return window.t ? window.t("errors.UNEXPECTED_ERROR") : "An unexpected error occurred.";
+  }
+
+  // Parse the lambda error envelope: { errors: [{ code, message }, ...] }.
+  function parseErrorBody(text) {
+    if (!text) return null;
+    try {
+      var body = JSON.parse(text);
+      if (body && Array.isArray(body.errors) && body.errors.length) return body.errors;
+    } catch (e) { /* not JSON — fall through */ }
+    return null;
+  }
+
   function handleResponse(res) {
-    if (res.status === 403) {
-      return res.text().then(function (t) {
-        var err = new Error("You are not allowed to perform this action." + (t ? (" " + t) : ""));
-        err.status = 403;
-        throw err;
-      });
-    }
-    if (!res.ok) {
-      return res.text().then(function (t) {
-        var err = new Error("Request failed (" + res.status + "): " + (t || res.statusText));
-        err.status = res.status;
-        throw err;
-      });
-    }
-    return res;
+    if (res.ok) return res;
+    return res.text().then(function (text) {
+      var errors = parseErrorBody(text);
+      var message = errors
+        ? errors.map(translateError).join(" ")
+        : (window.t ? window.t("errors.UNEXPECTED_ERROR") : "An unexpected error occurred.");
+      var err = new Error(message);
+      err.status = res.status;
+      err.errors = errors || [];
+      throw err;
+    });
   }
 
   function fetchWithToken(idToken, path, options) {
