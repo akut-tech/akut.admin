@@ -235,7 +235,7 @@
       ]),
       grid2([
         selectField(t("menu.currency"), m.Currency, E.currency, function (v) { m.Currency = Number(v); }),
-        textField(t("menu.notes"), m.Notes || "", function (v) { m.Notes = v || null; })
+        textField(t("menu.notes"), m.Notes || "", function (v) { m.Notes = v || null; }, { maxLength: 1000 })
       ]),
       grid2([
         foundedYearField(t("menu.foundedYear"), m.FoundedYear, function (v) { m.FoundedYear = v; }),
@@ -244,10 +244,10 @@
       availabilityTimeField(t("menu.availabilityTime"), m.AvailabilityTime, function (avail) {
         m.AvailabilityTime = avail;
       }),
-      translationsField(t("menu.name"), m.Name, function (tr) { m.Name = tr; }),
+      translationsField(t("menu.name"), m.Name, function (tr) { m.Name = tr; }, { maxLength: 100 }),
       translationsField(t("menu.description"), m.Description || {}, function (tr) {
         m.Description = isEmptyTranslations(tr) ? null : tr;
-      }),
+      }, { maxLength: 500 }),
       imageField(t("menu.logo"), m.Logo, function (img) { m.Logo = img; })
     ]));
 
@@ -270,10 +270,10 @@
   function renderCategory(cat, ci) {
     var m = state.menu;
     var body = h("div", { class: "accordion-body" }, [
-      translationsField(t("menu.name"), cat.Name, function (tr) { cat.Name = tr; }),
+      translationsField(t("menu.name"), cat.Name, function (tr) { cat.Name = tr; }, { maxLength: 50 }),
       translationsField(t("menu.description"), cat.Description || {}, function (tr) {
         cat.Description = isEmptyTranslations(tr) ? null : tr;
-      }),
+      }, { maxLength: 200 }),
       itemsBlock(cat, ci)
     ]);
 
@@ -313,16 +313,16 @@
         null
       ]),
       tagField(t("menu.tag"), item.Tag, function (v) { item.Tag = v; }),
-      translationsField(t("menu.name"), item.Name, function (tr) { item.Name = tr; }),
+      translationsField(t("menu.name"), item.Name, function (tr) { item.Name = tr; }, { maxLength: 50 }),
       translationsField(t("menu.shortDesc"), item.ShortDescription || {}, function (tr) {
         item.ShortDescription = isEmptyTranslations(tr) ? null : tr;
-      }),
+      }, { maxLength: 100 }),
       translationsField(t("menu.fullDesc"), item.FullDescription || {}, function (tr) {
         item.FullDescription = isEmptyTranslations(tr) ? null : tr;
-      }),
+      }, { maxLength: 800 }),
       translationsField(t("menu.ingredients"), item.Ingredients || {}, function (tr) {
         item.Ingredients = isEmptyTranslations(tr) ? null : tr;
-      }),
+      }, { maxLength: 200 }),
       allergensField(item),
       dietsField(item),
       availabilityField(item),
@@ -362,11 +362,18 @@
 
   function textField(label, value, onChange, opts) {
     opts = opts || {};
+    var maxLength = opts.maxLength;
+    var counter = maxLength ? h("span", { class: "char-counter" }, [counterText(value, maxLength)]) : null;
     var input = h("input", {
       type: "text", value: value || "", placeholder: opts.placeholder || "",
-      oninput: function (e) { onChange(e.target.value); }
+      maxlength: maxLength || null,
+      oninput: function (e) {
+        onChange(e.target.value);
+        updateCounter(counter, e.target.value, maxLength);
+      }
     });
-    return field(label + (opts.required ? " *" : ""), input);
+    var control = counter ? h("div", { class: "field-input-row" }, [input, counter]) : input;
+    return field(label + (opts.required ? " *" : ""), control, opts.help);
   }
 
   function comboField(label, value, options, onChange, opts) {
@@ -443,26 +450,45 @@
     return field(label, select);
   }
 
-  function translationsField(label, trans, onChange) {
+  function translationsField(label, trans, onChange, opts) {
+    opts = opts || {};
+    var maxLength = opts.maxLength;
     var current = Object.assign({}, trans || {});
     var inputs = LANGUAGES.map(function (lang) {
+      var counter = maxLength
+        ? h("span", { class: "char-counter" }, [counterText(current[lang.name], maxLength)])
+        : null;
+      var input = h("input", {
+        type: "text", value: current[lang.name] || "",
+        placeholder: lang.name + "…",
+        maxlength: maxLength || null,
+        oninput: function (e) {
+          var v = e.target.value;
+          if (v) current[lang.name] = v; else delete current[lang.name];
+          updateCounter(counter, v, maxLength);
+          onChange(current);
+        }
+      });
       return h("div", { class: "trans-row" }, [
         h("span", { class: "trans-lang" }, [lang.name]),
-        h("input", {
-          type: "text", value: current[lang.name] || "",
-          placeholder: lang.name + "…",
-          oninput: function (e) {
-            var v = e.target.value;
-            if (v) current[lang.name] = v; else delete current[lang.name];
-            onChange(current);
-          }
-        })
+        input,
+        counter
       ]);
     });
     return h("div", { class: "field" }, [
       h("span", { class: "field-label" }, [label]),
       h("div", { class: "trans-grid" }, inputs)
     ]);
+  }
+
+  function counterText(v, max) {
+    return (v ? v.length : 0) + "/" + max;
+  }
+
+  function updateCounter(counter, value, maxLength) {
+    if (!counter) return;
+    counter.textContent = counterText(value, maxLength);
+    counter.classList.toggle("char-counter-limit", (value ? value.length : 0) >= maxLength);
   }
 
   function availabilityTimeField(label, avail, onChange) {
