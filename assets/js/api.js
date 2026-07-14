@@ -215,6 +215,7 @@
     deleteMenu: deleteMenu,
     setTenantStatus: setTenantStatus,
     getSubTenant: getSubTenant,
-    setSubTenant: setSubTenant
+    setSubTenant: setSubTenant,
+    translateError: translateError
   };
 })();

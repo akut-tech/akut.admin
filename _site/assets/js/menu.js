@@ -15,6 +15,81 @@
 
   var TEMPLATE_PRESETS = ["default", "epicurean", "deepblue", "senjutsu", "lisbon"];
 
+  // Sentinel data-entity-id used for menu-level fields, since a brand-new
+  // (never-saved) menu has no server-assigned Id yet to key off of — there is
+  // only ever one menu being edited at a time, so a constant is unambiguous.
+  var MENU_ENTITY_ID = "menu";
+
+  // Error `code` -> form field key, for codes that already uniquely identify
+  // a field. Keys match the property names used on the client-side model.
+  var SCALAR_FIELD_BY_CODE = {
+    "MENU_NOTES_TOO_LONG": "Notes",
+    "MENU_TEMPLATE_REQUIRED": "TemplateId",
+    "MENU_DEFAULT_LANGUAGE_INVALID": "DefaultLanguage",
+    "MENU_CURRENCY_INVALID": "Currency",
+    "MENU_FOUNDED_YEAR_INVALID": "FoundedYear",
+    "MENU_CATEGORIES_REQUIRED": "Categories",
+    "MENU_ITEM_ALLERGENS_INVALID": "Allergens",
+    "MENU_ITEM_PRICE_INVALID": "Price",
+    "MENU_ITEM_DIET_INVALID": "Diets",
+    "MENU_ITEM_YOUTUBE_URL_INVALID": "YouTubeVideoUrls",
+    "MENU_ITEM_TAG_INVALID": "Tag",
+    "AVAILABILITY_TIME_INVALID_RANGE": "AvailabilityTime",
+    "STANDARD_AVAILABILITY_DAYS_EMPTY": "Availability",
+    "STANDARD_AVAILABILITY_DAY_INVALID": "Availability",
+    "STANDARD_AVAILABILITY_DAYS_DUPLICATED": "Availability",
+    "IMAGE_URL_REQUIRED": "Image",
+    "IMAGE_URL_INVALID": "Image",
+    "IMAGE_TITLE_TOO_LONG": "Image",
+    "IMAGE_SOURCE_INVALID": "Image"
+  };
+
+  // Fields only the menu itself can own — used as a fallback when the
+  // server's EntityId can't be matched (e.g. a brand-new menu, see above).
+  var MENU_ONLY_FIELDS = {
+    Notes: 1, TemplateId: 1, DefaultLanguage: 1, Currency: 1,
+    FoundedYear: 1, Categories: 1, AvailabilityTime: 1
+  };
+
+  // TranslationsValidator reuses the same TRANSLATIONS_* codes for every
+  // translated field, so the field can't be told apart from the code alone.
+  // The English fieldName it was constructed with is always the message's
+  // prefix (see akut.domain.validations.TranslationsValidator) — recover the
+  // field from that prefix instead.
+  var TRANSLATION_FIELD_BY_PREFIX = [
+    ["Item short description", "ShortDescription"],
+    ["Item full description", "FullDescription"],
+    ["Item ingredients", "Ingredients"],
+    ["Item name", "Name"],
+    ["Category name", "Name"],
+    ["Category description", "Description"],
+    ["Menu name", "Name"],
+    ["Menu description", "Description"]
+  ];
+
+  // Field key -> i18n key, reusing the same labels already shown on the form.
+  var FIELD_LABEL_KEY = {
+    Name: "menu.name",
+    Description: "menu.description",
+    ShortDescription: "menu.shortDesc",
+    FullDescription: "menu.fullDesc",
+    Ingredients: "menu.ingredients",
+    Notes: "menu.notes",
+    TemplateId: "menu.templateId",
+    DefaultLanguage: "menu.defaultLanguage",
+    Currency: "menu.currency",
+    FoundedYear: "menu.foundedYear",
+    Categories: "menu.categories",
+    Allergens: "menu.allergens",
+    Price: "menu.price",
+    Diets: "menu.diets",
+    YouTubeVideoUrls: "menu.youtube",
+    Tag: "menu.tag",
+    AvailabilityTime: "menu.availabilityTime",
+    Availability: "menu.availability",
+    Image: "menu.images"
+  };
+
   var state = {
     menuId: null,   // null for a new (unsaved) menu
     status: "Disabled",
@@ -104,6 +179,17 @@
     return node;
   }
 
+  // Stamps data-* attributes onto a field's interactive control so a
+  // validation error can later be traced back to the exact element that
+  // needs fixing (see resolveErrorTarget / goToError below).
+  function fieldAttrs(entityId, field, language) {
+    var attrs = {};
+    if (entityId) attrs["data-entity-id"] = entityId;
+    if (field) attrs["data-field"] = field;
+    if (language) attrs["data-language"] = language;
+    return attrs;
+  }
+
   function uuid() {
     if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
     return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
@@ -119,6 +205,129 @@
     refs.menuAlert.hidden = false;
   }
   function clearAlert() { refs.menuAlert.hidden = true; }
+
+  // Shows a plain message for generic failures, or — when the API returned a
+  // structured validation error list — a clickable, contextualized list that
+  // jumps to the offending field.
+  function showApiError(err, fallbackKey) {
+    if (err && err.errors && err.errors.length && state.menu) {
+      renderErrorList(err.errors);
+    } else {
+      alert("error", (err && err.message) || t(fallbackKey || "menu.errorSave"));
+    }
+  }
+
+  function renderErrorList(errorItems) {
+    refs.menuAlert.className = "alert alert-error";
+    refs.menuAlert.innerHTML = "";
+    refs.menuAlert.hidden = false;
+
+    var titleText = errorItems.length === 1
+      ? t("errors.titleOne")
+      : t("errors.titleMany", { count: errorItems.length });
+    refs.menuAlert.appendChild(h("p", { class: "alert-error-title" }, [titleText]));
+
+    var list = h("ul", { class: "alert-error-list" });
+    errorItems.forEach(function (item) {
+      var target = resolveErrorTarget(state.menu, item);
+      var label = target ? contextLabel(target) : null;
+      var text = (label ? label + ": " : "") + AkutApi.translateError(item);
+      var li = h("li", { class: "alert-error-item" + (target ? " is-clickable" : "") }, [text]);
+      if (target) li.addEventListener("click", function () { goToError(target); });
+      list.appendChild(li);
+    });
+    refs.menuAlert.appendChild(list);
+  }
+
+  // ---- Validation error -> field navigation --------------------------------
+  function findEntityById(menu, entityId) {
+    if (!entityId) return null;
+    if (menu.Id && menu.Id === entityId) return { kind: "menu" };
+    var cats = menu.Categories || [];
+    for (var ci = 0; ci < cats.length; ci++) {
+      var cat = cats[ci];
+      if (cat.Id === entityId) return { kind: "category", catIndex: ci, cat: cat };
+      var items = cat.Items || [];
+      for (var ii = 0; ii < items.length; ii++) {
+        if (items[ii].Id === entityId) {
+          return { kind: "item", catIndex: ci, itemIndex: ii, cat: cat, item: items[ii] };
+        }
+      }
+    }
+    return null;
+  }
+
+  function resolveField(item) {
+    var code = item.code || "";
+    var shortCode = code.indexOf(".") !== -1 ? code.substring(code.indexOf(".") + 1) : code;
+    if (shortCode.indexOf("TRANSLATIONS_") === 0) {
+      var message = item.message || "";
+      for (var i = 0; i < TRANSLATION_FIELD_BY_PREFIX.length; i++) {
+        if (message.indexOf(TRANSLATION_FIELD_BY_PREFIX[i][0]) === 0) return TRANSLATION_FIELD_BY_PREFIX[i][1];
+      }
+      return null;
+    }
+    return SCALAR_FIELD_BY_CODE[code] || null;
+  }
+
+  function resolveErrorTarget(menu, item) {
+    var field = resolveField(item);
+    if (!field) return null;
+    var ctx = item.context || {};
+    var entity = findEntityById(menu, ctx.EntityId);
+    if (!entity && MENU_ONLY_FIELDS[field]) entity = { kind: "menu" };
+    if (!entity) return null;
+    var language = (ctx.Language != null && E.language) ? E.language[ctx.Language] : null;
+    return { entity: entity, field: field, language: language || null, order: ctx.Order != null ? ctx.Order : null };
+  }
+
+  function contextLabel(target) {
+    var parts = [];
+    if (target.entity.kind === "category" || target.entity.kind === "item") {
+      parts.push(t("menu.categoryN", { n: target.entity.catIndex + 1 }) + nameHint(target.entity.cat.Name));
+    }
+    if (target.entity.kind === "item") {
+      parts.push(t("menu.itemN", { n: target.entity.itemIndex + 1 }) + nameHint(target.entity.item.Name));
+    }
+    var fieldKey = FIELD_LABEL_KEY[target.field];
+    parts.push(fieldKey ? t(fieldKey) : target.field);
+    if (target.language) parts.push(target.language);
+    return parts.join(" › ");
+  }
+
+  function goToError(target) {
+    if (state.view !== "form") switchView("form");
+    if (target.entity.kind === "item") {
+      openCats[target.entity.cat.Id] = true;
+      openItems[target.entity.item.Id] = true;
+    } else if (target.entity.kind === "category") {
+      openCats[target.entity.cat.Id] = true;
+    }
+    renderForm();
+    requestAnimationFrame(function () {
+      var domId = target.entity.kind === "menu" ? MENU_ENTITY_ID
+        : target.entity.kind === "category" ? target.entity.cat.Id
+        : target.entity.item.Id;
+      var selector = '[data-entity-id="' + domId + '"][data-field="' + target.field + '"]';
+      if (target.language) selector += '[data-language="' + target.language + '"]';
+      if (target.field === "Image" && target.order != null) selector += '[data-order="' + target.order + '"]';
+      var el = refs.editorRoot.querySelector(selector);
+      if (!el && target.field === "Image") {
+        el = refs.editorRoot.querySelector('[data-entity-id="' + domId + '"][data-field="Image"]');
+      }
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (typeof el.focus === "function") el.focus();
+      highlightField(el);
+    });
+  }
+
+  function highlightField(el) {
+    var wrapper = el.classList.contains("image-editor") ? el
+      : el.closest(".trans-row") || el.closest(".field") || el;
+    wrapper.classList.add("field-flash");
+    setTimeout(function () { wrapper.classList.remove("field-flash"); }, 2000);
+  }
 
   // ---- Load / new ---------------------------------------------------------
   function load() {
@@ -228,30 +437,36 @@
     root.appendChild(card(t("menu.details"), [
       grid2([
         comboField(t("menu.templateId"), m.TemplateId, TEMPLATE_PRESETS, function (v) { m.TemplateId = v; },
-          { required: true, placeholder: t("menu.templateIdPlaceholder"), help: t("menu.templateIdHelp") }),
+          { required: true, placeholder: t("menu.templateIdPlaceholder"), help: t("menu.templateIdHelp"),
+            entityId: MENU_ENTITY_ID, field: "TemplateId" }),
         selectField(t("menu.defaultLanguage"), m.DefaultLanguage, E.language, function (v) {
           m.DefaultLanguage = Number(v);
-        })
+        }, { entityId: MENU_ENTITY_ID, field: "DefaultLanguage" })
       ]),
       grid2([
-        selectField(t("menu.currency"), m.Currency, E.currency, function (v) { m.Currency = Number(v); }),
-        textField(t("menu.notes"), m.Notes || "", function (v) { m.Notes = v || null; }, { maxLength: 1000 })
+        selectField(t("menu.currency"), m.Currency, E.currency, function (v) { m.Currency = Number(v); },
+          { entityId: MENU_ENTITY_ID, field: "Currency" }),
+        textField(t("menu.notes"), m.Notes || "", function (v) { m.Notes = v || null; },
+          { maxLength: 1000, entityId: MENU_ENTITY_ID, field: "Notes" })
       ]),
       grid2([
-        foundedYearField(t("menu.foundedYear"), m.FoundedYear, function (v) { m.FoundedYear = v; }),
+        foundedYearField(t("menu.foundedYear"), m.FoundedYear, function (v) { m.FoundedYear = v; },
+          { entityId: MENU_ENTITY_ID, field: "FoundedYear" }),
         null
       ]),
       availabilityTimeField(t("menu.availabilityTime"), m.AvailabilityTime, function (avail) {
         m.AvailabilityTime = avail;
       }),
-      translationsField(t("menu.name"), m.Name, function (tr) { m.Name = tr; }, { maxLength: 100 }),
+      translationsField(t("menu.name"), m.Name, function (tr) { m.Name = tr; },
+        { maxLength: 100, entityId: MENU_ENTITY_ID, field: "Name" }),
       translationsField(t("menu.description"), m.Description || {}, function (tr) {
         m.Description = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 500 }),
-      imageField(t("menu.logo"), m.Logo, function (img) { m.Logo = img; })
+      }, { maxLength: 500, entityId: MENU_ENTITY_ID, field: "Description" }),
+      imageField(t("menu.logo"), m.Logo, function (img) { m.Logo = img; },
+        { entityId: MENU_ENTITY_ID, field: "Image" })
     ]));
 
-    var catsWrap = h("div", { class: "section" }, [
+    var catsWrap = h("div", Object.assign({ class: "section" }, fieldAttrs(MENU_ENTITY_ID, "Categories")), [
       sectionHeader(t("menu.categories"), t("menu.addCategory"), function () {
         m.Categories.push(newCategory(m.Categories.length));
         renderForm();
@@ -270,10 +485,11 @@
   function renderCategory(cat, ci) {
     var m = state.menu;
     var body = h("div", { class: "accordion-body" }, [
-      translationsField(t("menu.name"), cat.Name, function (tr) { cat.Name = tr; }, { maxLength: 50 }),
+      translationsField(t("menu.name"), cat.Name, function (tr) { cat.Name = tr; },
+        { maxLength: 50, entityId: cat.Id, field: "Name" }),
       translationsField(t("menu.description"), cat.Description || {}, function (tr) {
         cat.Description = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 200 }),
+      }, { maxLength: 200, entityId: cat.Id, field: "Description" }),
       itemsBlock(cat, ci)
     ]);
 
@@ -309,20 +525,22 @@
   function renderItem(cat, item, ii) {
     var body = h("div", { class: "accordion-body" }, [
       grid2([
-        priceField(t("menu.price"), item.Price, function (v) { item.Price = floatOr(v, 0); }),
+        priceField(t("menu.price"), item.Price, function (v) { item.Price = floatOr(v, 0); },
+          { entityId: item.Id, field: "Price" }),
         null
       ]),
-      tagField(t("menu.tag"), item.Tag, function (v) { item.Tag = v; }),
-      translationsField(t("menu.name"), item.Name, function (tr) { item.Name = tr; }, { maxLength: 50 }),
+      tagField(t("menu.tag"), item.Tag, function (v) { item.Tag = v; }, { entityId: item.Id, field: "Tag" }),
+      translationsField(t("menu.name"), item.Name, function (tr) { item.Name = tr; },
+        { maxLength: 50, entityId: item.Id, field: "Name" }),
       translationsField(t("menu.shortDesc"), item.ShortDescription || {}, function (tr) {
         item.ShortDescription = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 100 }),
+      }, { maxLength: 100, entityId: item.Id, field: "ShortDescription" }),
       translationsField(t("menu.fullDesc"), item.FullDescription || {}, function (tr) {
         item.FullDescription = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 800 }),
+      }, { maxLength: 800, entityId: item.Id, field: "FullDescription" }),
       translationsField(t("menu.ingredients"), item.Ingredients || {}, function (tr) {
         item.Ingredients = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 200 }),
+      }, { maxLength: 200, entityId: item.Id, field: "Ingredients" }),
       allergensField(item),
       dietsField(item),
       availabilityField(item),
@@ -364,14 +582,14 @@
     opts = opts || {};
     var maxLength = opts.maxLength;
     var counter = maxLength ? h("span", { class: "char-counter" }, [counterText(value, maxLength)]) : null;
-    var input = h("input", {
+    var input = h("input", Object.assign({
       type: "text", value: value || "", placeholder: opts.placeholder || "",
       maxlength: maxLength || null,
       oninput: function (e) {
         onChange(e.target.value);
         updateCounter(counter, e.target.value, maxLength);
       }
-    });
+    }, fieldAttrs(opts.entityId, opts.field)));
     var control = counter ? h("div", { class: "field-input-row" }, [input, counter]) : input;
     return field(label + (opts.required ? " *" : ""), control, opts.help);
   }
@@ -379,11 +597,11 @@
   function comboField(label, value, options, onChange, opts) {
     opts = opts || {};
     var listId = "combo-" + label.replace(/[^a-z]/gi, "").toLowerCase();
-    var input = h("input", {
+    var input = h("input", Object.assign({
       type: "text", value: value || "", placeholder: opts.placeholder || "",
       list: listId,
       oninput: function (e) { onChange(e.target.value); }
-    });
+    }, fieldAttrs(opts.entityId, opts.field)));
     var datalist = h("datalist", { id: listId },
       options.map(function (o) { return h("option", { value: o }); })
     );
@@ -395,17 +613,19 @@
     ]);
   }
 
-  function priceField(label, value, onChange) {
-    var input = h("input", {
+  function priceField(label, value, onChange, attrs) {
+    attrs = attrs || {};
+    var input = h("input", Object.assign({
       type: "number", value: value == null ? "" : value, step: "0.01", min: "0",
       oninput: function (e) { onChange(e.target.value); }
-    });
+    }, fieldAttrs(attrs.entityId, attrs.field)));
     return field(label, input);
   }
 
-  function foundedYearField(label, value, onChange) {
+  function foundedYearField(label, value, onChange, attrs) {
+    attrs = attrs || {};
     var currentYear = new Date().getFullYear();
-    var input = h("input", {
+    var input = h("input", Object.assign({
       type: "number", value: value == null ? "" : value,
       min: "1500", max: String(currentYear), step: "1",
       placeholder: "—",
@@ -413,14 +633,15 @@
         var v = e.target.value.trim();
         onChange(v !== "" ? intOr(v, null) : null);
       }
-    });
+    }, fieldAttrs(attrs.entityId, attrs.field)));
     return field(label, input, t("menu.foundedYearHelp", { max: currentYear }));
   }
 
-  function selectField(label, value, enumMap, onChange) {
-    var select = h("select", {
+  function selectField(label, value, enumMap, onChange, attrs) {
+    attrs = attrs || {};
+    var select = h("select", Object.assign({
       onchange: function (e) { onChange(e.target.value); }
-    }, Object.keys(enumMap).map(function (k) {
+    }, fieldAttrs(attrs.entityId, attrs.field)), Object.keys(enumMap).map(function (k) {
       return h("option", { value: k, selected: Number(k) === Number(value) }, [enumMap[k]]);
     }));
     return field(label, select);
@@ -436,17 +657,18 @@
     ]);
   }
 
-  function tagField(label, value, onChange) {
+  function tagField(label, value, onChange, attrs) {
+    attrs = attrs || {};
     var options = [h("option", { value: "" }, [t("menu.tag.none")])];
     Object.keys(E.menuItemTag).forEach(function (k) {
       options.push(h("option", { value: k, selected: Number(k) === Number(value) }, [t("menu.tag." + k)]));
     });
-    var select = h("select", {
+    var select = h("select", Object.assign({
       onchange: function (e) {
         var v = e.target.value;
         onChange(v !== "" ? Number(v) : null);
       }
-    }, options);
+    }, fieldAttrs(attrs.entityId, attrs.field)), options);
     return field(label, select);
   }
 
@@ -458,7 +680,7 @@
       var counter = maxLength
         ? h("span", { class: "char-counter" }, [counterText(current[lang.name], maxLength)])
         : null;
-      var input = h("input", {
+      var input = h("input", Object.assign({
         type: "text", value: current[lang.name] || "",
         placeholder: lang.name + "…",
         maxlength: maxLength || null,
@@ -468,7 +690,7 @@
           updateCounter(counter, v, maxLength);
           onChange(current);
         }
-      });
+      }, fieldAttrs(opts.entityId, opts.field, lang.name)));
       return h("div", { class: "trans-row" }, [
         h("span", { class: "trans-lang" }, [lang.name]),
         input,
@@ -516,7 +738,7 @@
       });
     }
 
-    return h("div", { class: "field" }, [
+    return h("div", Object.assign({ class: "field" }, fieldAttrs(MENU_ENTITY_ID, "AvailabilityTime")), [
       h("span", { class: "field-label" }, [label]),
       h("div", { class: "grid grid-2 tight" }, [
         field(t("menu.availabilityTimeFrom"), makeInput("From")),
@@ -556,7 +778,7 @@
         h("span", null, [t("menu.allergen." + k)])
       ]);
     });
-    return h("div", { class: "field" }, [
+    return h("div", Object.assign({ class: "field" }, fieldAttrs(item.Id, "Allergens")), [
       h("span", { class: "field-label" }, [t("menu.allergens")]),
       h("div", { class: "chip-grid" }, boxes)
     ]);
@@ -581,7 +803,7 @@
         h("span", null, [E.foodDietType[k]])
       ]);
     });
-    return h("div", { class: "field" }, [
+    return h("div", Object.assign({ class: "field" }, fieldAttrs(item.Id, "Diets")), [
       h("span", { class: "field-label" }, [t("menu.diets")]),
       h("div", { class: "chip-grid" }, boxes)
     ]);
@@ -626,7 +848,7 @@
       ]);
     });
 
-    return h("div", { class: "field" }, [
+    return h("div", Object.assign({ class: "field" }, fieldAttrs(item.Id, "Availability")), [
       h("span", { class: "field-label" }, [t("menu.availability")]),
       unavailableCheckbox,
       h("span", { class: "field-help" }, [t("menu.availability.days")]),
@@ -636,19 +858,20 @@
   }
 
   function youTubeField(item) {
-    var input = h("textarea", {
+    var input = h("textarea", Object.assign({
       rows: "2", placeholder: t("menu.youtubePlaceholder"),
       oninput: function (e) {
         var urls = e.target.value.split("\n").map(function (s) { return s.trim(); })
           .filter(Boolean);
         item.YouTubeVideoUrls = urls.length ? urls : null;
       }
-    });
+    }, fieldAttrs(item.Id, "YouTubeVideoUrls")));
     input.value = (item.YouTubeVideoUrls || []).join("\n");
     return field(t("menu.youtube"), input);
   }
 
-  function imageField(label, img, onChange) {
+  function imageField(label, img, onChange, attrs) {
+    attrs = attrs || {};
     var model = img ? Object.assign({}, img) : null;
     var container = h("div", { class: "image-box" });
 
@@ -666,7 +889,7 @@
       }
       container.appendChild(imageEditor(model, function () { onChange(model); }, function () {
         model = null; onChange(null); paint();
-      }));
+      }, attrs));
     }
     paint();
     return h("div", { class: "field" }, [
@@ -684,7 +907,7 @@
       item.Images.forEach(function (img, idx) {
         container.appendChild(imageEditor(img, function () {}, function () {
           item.Images.splice(idx, 1); paint();
-        }));
+        }, { entityId: item.Id, field: "Image" }));
       });
       container.appendChild(h("button", {
         type: "button", class: "btn btn-ghost btn-sm",
@@ -701,8 +924,11 @@
     ]);
   }
 
-  function imageEditor(img, onChange, onRemove) {
-    return h("div", { class: "image-editor" }, [
+  function imageEditor(img, onChange, onRemove, attrs) {
+    attrs = attrs || {};
+    var rowAttrs = fieldAttrs(attrs.entityId, attrs.field);
+    rowAttrs["data-order"] = img.Order == null ? 0 : img.Order;
+    return h("div", Object.assign({ class: "image-editor" }, rowAttrs), [
       h("div", { class: "image-fields" }, [
         h("input", {
           type: "text", value: img.Url || "", placeholder: t("menu.imageUrl"),
@@ -822,7 +1048,7 @@
           updateStatusButtons();
           alert("success", t("menu.disabledSuccess"));
         })
-        .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+        .catch(function (err) { showApiError(err, "menu.errorSave"); })
         .finally(function () {
           setBusy(false);
           if (refs.disableMenuBtn) refs.disableMenuBtn.textContent = t("menu.disable");
@@ -845,7 +1071,7 @@
         .then(function () {
           window.MenuList && window.MenuList.showListView();
         })
-        .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+        .catch(function (err) { showApiError(err, "menu.errorSave"); })
         .finally(function () {
           setBusy(false);
           if (refs.deleteMenuBtn) refs.deleteMenuBtn.textContent = t("menu.delete");
@@ -864,7 +1090,7 @@
         updateStatusButtons();
         alert("success", t("menu.restoredSuccess"));
       })
-      .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+      .catch(function (err) { showApiError(err, "menu.errorSave"); })
       .finally(function () {
         setBusy(false);
         if (refs.restoreMenuBtn) refs.restoreMenuBtn.textContent = t("menu.restore");
@@ -893,7 +1119,7 @@
           encodeURIComponent(tenant) + "/" + encodeURIComponent(menuId);
         window.open(previewUrl, "_blank", "noopener,noreferrer");
       })
-      .catch(function (err) { alert("error", err.message || t("menu.errorPreview")); })
+      .catch(function (err) { showApiError(err, "menu.errorPreview"); })
       .finally(function () {
         setBusy(false);
         if (refs.previewBtn) refs.previewBtn.textContent = t("menu.preview");
@@ -932,7 +1158,7 @@
             alert("success", t("menu.savedAs", { status: t("menu.status.Active") }));
           });
         })
-        .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+        .catch(function (err) { showApiError(err, "menu.errorSave"); })
         .finally(function () { setBusy(false); });
     } else {
       // Existing menu: update body, then activate if publishing and not already Active.
@@ -950,7 +1176,7 @@
             alert("success", t("menu.savedAs", { status: t("menu.status.Active") }));
           });
         })
-        .catch(function (err) { alert("error", err.message || t("menu.errorSave")); })
+        .catch(function (err) { showApiError(err, "menu.errorSave"); })
         .finally(function () { setBusy(false); });
     }
   }
