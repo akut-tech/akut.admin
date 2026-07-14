@@ -325,6 +325,7 @@
       }),
       allergensField(item),
       dietsField(item),
+      availabilityField(item),
       youTubeField(item),
       imagesField(item)
     ]);
@@ -560,6 +561,54 @@
     ]);
   }
 
+  function availabilityField(item) {
+    var avail = item.Availability || null;
+
+    function ensure() {
+      if (!item.Availability) item.Availability = { Temporary: null, Standard: null };
+      return item.Availability;
+    }
+
+    var unavailableCheckbox = checkboxField(
+      t("menu.availability.unavailable"),
+      !!(avail && avail.Temporary && avail.Temporary.Unavailable),
+      function (checked) {
+        var a = ensure();
+        a.Temporary = checked ? { Unavailable: true } : null;
+      }
+    );
+
+    var selectedDays = (avail && avail.Standard && avail.Standard.Days) || [];
+    var dayBoxes = Object.keys(E.dayOfWeek).map(function (k) {
+      var val = Number(k);
+      return h("label", { class: "chip-check" }, [
+        h("input", {
+          type: "checkbox", value: val,
+          checked: selectedDays.indexOf(val) !== -1,
+          onchange: function (e) {
+            var a = ensure();
+            var days = (a.Standard && a.Standard.Days) || [];
+            if (e.target.checked) {
+              if (days.indexOf(val) === -1) days = days.concat([val]);
+            } else {
+              days = days.filter(function (d) { return d !== val; });
+            }
+            a.Standard = days.length ? { Days: days } : null;
+          }
+        }),
+        h("span", null, [t("menu.day." + k)])
+      ]);
+    });
+
+    return h("div", { class: "field" }, [
+      h("span", { class: "field-label" }, [t("menu.availability")]),
+      unavailableCheckbox,
+      h("span", { class: "field-help" }, [t("menu.availability.days")]),
+      h("div", { class: "chip-grid" }, dayBoxes),
+      h("span", { class: "field-help" }, [t("menu.availability.daysHelp")])
+    ]);
+  }
+
   function youTubeField(item) {
     var input = h("textarea", {
       rows: "2", placeholder: t("menu.youtubePlaceholder"),
@@ -696,7 +745,7 @@
     return {
       Id: uuid(), Order: order, Diets: [], Allergens: [], Images: [], YouTubeVideoUrls: null,
       Name: {}, ShortDescription: null, FullDescription: null,
-      Ingredients: null, Price: 0, Tag: null
+      Ingredients: null, Price: 0, Tag: null, Availability: null
     };
   }
 
@@ -940,12 +989,23 @@
               Ingredients: cleanTranslationsOrNull(item.Ingredients),
               Allergens: (item.Allergens && item.Allergens.length) ? item.Allergens.map(Number) : null,
               Price: floatOr(item.Price, 0),
-              Tag: item.Tag != null ? intOr(item.Tag, null) : null
+              Tag: item.Tag != null ? intOr(item.Tag, null) : null,
+              Availability: cleanAvailability(item.Availability)
             };
           })
         };
       })
     };
+  }
+
+  function cleanAvailability(avail) {
+    if (!avail) return null;
+    var temporary = (avail.Temporary && avail.Temporary.Unavailable === true)
+      ? { Unavailable: true } : null;
+    var days = (avail.Standard && Array.isArray(avail.Standard.Days) && avail.Standard.Days.length)
+      ? avail.Standard.Days.map(Number) : null;
+    var standard = days ? { Days: days } : null;
+    return (temporary || standard) ? { Temporary: temporary, Standard: standard } : null;
   }
 
   function cleanImage(img) {

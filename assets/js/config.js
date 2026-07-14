@@ -38,5 +38,10 @@ window.AKUT_ENUMS = {
     1: "Gluten", 2: "Crustaceans", 3: "Eggs", 4: "Fish", 5: "Peanuts",
     6: "Soybeans", 7: "Milk", 8: "Nuts", 9: "Celery", 10: "Mustard",
     11: "Sesame", 12: "Sulphites", 13: "Lupin", 14: "Molluscs"
+  },
+  // Mirrors the .NET System.DayOfWeek enum used by StandardAvailability.Days.
+  dayOfWeek: {
+    0: "Sunday", 1: "Monday", 2: "Tuesday", 3: "Wednesday",
+    4: "Thursday", 5: "Friday", 6: "Saturday"
   }
 };
