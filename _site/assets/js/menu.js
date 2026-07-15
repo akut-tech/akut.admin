@@ -308,12 +308,13 @@
       var domId = target.entity.kind === "menu" ? MENU_ENTITY_ID
         : target.entity.kind === "category" ? target.entity.cat.Id
         : target.entity.item.Id;
+      var isOrderedList = target.field === "Image" || target.field === "YouTubeVideoUrls";
       var selector = '[data-entity-id="' + domId + '"][data-field="' + target.field + '"]';
       if (target.language) selector += '[data-language="' + target.language + '"]';
-      if (target.field === "Image" && target.order != null) selector += '[data-order="' + target.order + '"]';
+      if (isOrderedList && target.order != null) selector += '[data-order="' + target.order + '"]';
       var el = refs.editorRoot.querySelector(selector);
-      if (!el && target.field === "Image") {
-        el = refs.editorRoot.querySelector('[data-entity-id="' + domId + '"][data-field="Image"]');
+      if (!el && isOrderedList) {
+        el = refs.editorRoot.querySelector('[data-entity-id="' + domId + '"][data-field="' + target.field + '"]');
       }
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -323,7 +324,7 @@
   }
 
   function highlightField(el) {
-    var wrapper = el.classList.contains("image-editor") ? el
+    var wrapper = (el.classList.contains("image-editor") || el.classList.contains("video-row")) ? el
       : el.closest(".trans-row") || el.closest(".field") || el;
     wrapper.classList.add("field-flash");
     setTimeout(function () { wrapper.classList.remove("field-flash"); }, 2000);
@@ -860,16 +861,47 @@
   }
 
   function youTubeField(item) {
-    var input = h("textarea", Object.assign({
-      rows: "2", placeholder: t("menu.youtubePlaceholder"),
-      oninput: function (e) {
-        var urls = e.target.value.split("\n").map(function (s) { return s.trim(); })
-          .filter(Boolean);
-        item.YouTubeVideoUrls = urls.length ? urls : null;
-      }
-    }, fieldAttrs(item.Id, "YouTubeVideoUrls")));
-    input.value = (item.YouTubeVideoUrls || []).join("\n");
-    return field(t("menu.youtube"), input);
+    item.YouTubeVideoUrls = item.YouTubeVideoUrls || [];
+    var container = h("div", { class: "video-list" });
+
+    function paint() {
+      container.innerHTML = "";
+      item.YouTubeVideoUrls.forEach(function (url, idx) {
+        container.appendChild(videoRow(idx));
+      });
+      container.appendChild(h("button", {
+        type: "button", class: "btn btn-ghost btn-sm",
+        onclick: function () {
+          item.YouTubeVideoUrls.push("");
+          paint();
+        }
+      }, [t("menu.addVideo")]));
+    }
+
+    // Order is not user-editable — it's derived from position in the array
+    // (via the up/down arrows), same as images.
+    function videoRow(idx) {
+      var urls = item.YouTubeVideoUrls;
+      var rowAttrs = fieldAttrs(item.Id, "YouTubeVideoUrls");
+      rowAttrs["data-order"] = idx;
+      return h("div", Object.assign({ class: "video-row" }, rowAttrs), [
+        h("input", {
+          type: "text", value: urls[idx] || "", placeholder: t("menu.youtubePlaceholder"),
+          oninput: function (e) { urls[idx] = e.target.value; }
+        }),
+        h("div", { class: "row-actions" }, [
+          iconButton("↑", t("menu.moveUp"), function () { move(urls, idx, -1); paint(); }),
+          iconButton("↓", t("menu.moveDown"), function () { move(urls, idx, 1); paint(); }),
+          iconButton("✕", t("menu.removeVideo"), function () { urls.splice(idx, 1); paint(); })
+        ])
+      ]);
+    }
+
+    paint();
+    return h("div", { class: "field" }, [
+      h("span", { class: "field-label" }, [t("menu.youtube")]),
+      container
+    ]);
   }
 
   function imageField(label, img, onChange, attrs) {
@@ -959,7 +991,7 @@
             [E.imageSource[k]]);
         }))
       ]),
-      h("div", { class: "image-actions" }, actions)
+      h("div", { class: "row-actions" }, actions)
     ]);
   }
 
@@ -1242,8 +1274,7 @@
               Order: ii,
               Diets: (item.Diets && item.Diets.length) ? item.Diets.map(Number) : null,
               Images: cleanImages(item.Images),
-              YouTubeVideoUrls: (item.YouTubeVideoUrls && item.YouTubeVideoUrls.length)
-                ? item.YouTubeVideoUrls : null,
+              YouTubeVideoUrls: cleanYouTubeUrls(item.YouTubeVideoUrls),
               Name: cleanTranslations(item.Name),
               ShortDescription: cleanTranslationsOrNull(item.ShortDescription),
               FullDescription: cleanTranslationsOrNull(item.FullDescription),
@@ -1278,6 +1309,12 @@
     var cleaned = (images || []).map(cleanImage).filter(Boolean);
     // Order reflects the current position — set by the up/down arrows.
     cleaned.forEach(function (img, idx) { img.Order = idx; });
+    return cleaned.length ? cleaned : null;
+  }
+
+  // Order reflects the current position — set by the up/down arrows.
+  function cleanYouTubeUrls(urls) {
+    var cleaned = (urls || []).map(function (u) { return (u || "").trim(); }).filter(Boolean);
     return cleaned.length ? cleaned : null;
   }
 

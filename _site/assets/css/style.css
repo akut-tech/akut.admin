@@ -272,6 +272,9 @@ textarea { resize: vertical; }
 .chip-check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); }
 .chip-check input { width: auto; }
 
+/* Icon-button group shared by reorderable list rows (images, videos, ...) */
+.row-actions { display: flex; gap: 6px; }
+
 /* Images */
 .image-box, .image-list { display: flex; flex-direction: column; gap: 8px; }
 .image-editor {
@@ -280,8 +283,16 @@ textarea { resize: vertical; }
   border-radius: var(--radius-sm); padding: 8px;
 }
 .image-fields { display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 6px; flex: 1; }
-.image-actions { display: flex; gap: 6px; }
 @media (max-width: 720px) { .image-fields { grid-template-columns: 1fr; } }
+
+/* YouTube video URLs */
+.video-list { display: flex; flex-direction: column; gap: 8px; }
+.video-row {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px;
+}
+.video-row input { flex: 1; }
 
 /* ---------- Buttons ---------- */
 .btn {
