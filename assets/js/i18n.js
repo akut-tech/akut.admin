@@ -113,7 +113,6 @@
       "menu.categories": "Categories",
       "menu.addCategory": "Add category",
       "menu.noCategories": "No categories yet.",
-      "menu.order": "Order",
 
       "menu.items": "Items",
       "menu.addItem": "Add item",
@@ -373,7 +372,6 @@
       "menu.categories": "Categorias",
       "menu.addCategory": "Adicionar categoria",
       "menu.noCategories": "Nenhuma categoria ainda.",
-      "menu.order": "Ordem",
 
       "menu.items": "Itens",
       "menu.addItem": "Adicionar item",

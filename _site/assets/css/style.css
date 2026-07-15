@@ -279,8 +279,8 @@ textarea { resize: vertical; }
   background: var(--surface-2); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 8px;
 }
-.image-fields { display: grid; grid-template-columns: 2fr 1.5fr 1fr 70px; gap: 6px; flex: 1; }
-.image-fields .order-input { text-align: center; }
+.image-fields { display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 6px; flex: 1; }
+.image-actions { display: flex; gap: 6px; }
 @media (max-width: 720px) { .image-fields { grid-template-columns: 1fr; } }
 
 /* ---------- Buttons ---------- */

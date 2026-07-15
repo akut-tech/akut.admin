@@ -384,6 +384,8 @@
         }
         if (item.IsNew && item.Tag == null) item.Tag = 1;
         delete item.IsNew;
+        item.Images = item.Images || [];
+        item.Images.sort(byOrder);
       });
     });
     return menu;
@@ -907,7 +909,10 @@
       item.Images.forEach(function (img, idx) {
         container.appendChild(imageEditor(img, function () {}, function () {
           item.Images.splice(idx, 1); paint();
-        }, { entityId: item.Id, field: "Image" }));
+        }, { entityId: item.Id, field: "Image" }, {
+          onMoveUp: function () { move(item.Images, idx, -1); paint(); },
+          onMoveDown: function () { move(item.Images, idx, 1); paint(); }
+        }));
       });
       container.appendChild(h("button", {
         type: "button", class: "btn btn-ghost btn-sm",
@@ -924,10 +929,19 @@
     ]);
   }
 
-  function imageEditor(img, onChange, onRemove, attrs) {
+  // Order is not user-editable — it's derived from position (via the up/down
+  // arrows), same as categories and items. sanitize() rewrites Order from the
+  // array index on save.
+  function imageEditor(img, onChange, onRemove, attrs, moveHandlers) {
     attrs = attrs || {};
     var rowAttrs = fieldAttrs(attrs.entityId, attrs.field);
     rowAttrs["data-order"] = img.Order == null ? 0 : img.Order;
+    var actions = [];
+    if (moveHandlers) {
+      actions.push(iconButton("↑", t("menu.moveUp"), moveHandlers.onMoveUp));
+      actions.push(iconButton("↓", t("menu.moveDown"), moveHandlers.onMoveDown));
+    }
+    actions.push(iconButton("✕", t("menu.removeImage"), onRemove));
     return h("div", Object.assign({ class: "image-editor" }, rowAttrs), [
       h("div", { class: "image-fields" }, [
         h("input", {
@@ -943,14 +957,9 @@
         }, Object.keys(E.imageSource).map(function (k) {
           return h("option", { value: k, selected: Number(k) === Number(img.Source) },
             [E.imageSource[k]]);
-        })),
-        h("input", {
-          type: "number", class: "order-input", value: img.Order == null ? 0 : img.Order,
-          title: t("menu.order"),
-          oninput: function (e) { img.Order = intOr(e.target.value, 0); onChange(); }
-        })
+        }))
       ]),
-      iconButton("✕", t("menu.removeImage"), onRemove)
+      h("div", { class: "image-actions" }, actions)
     ]);
   }
 
@@ -1267,6 +1276,8 @@
 
   function cleanImages(images) {
     var cleaned = (images || []).map(cleanImage).filter(Boolean);
+    // Order reflects the current position — set by the up/down arrows.
+    cleaned.forEach(function (img, idx) { img.Order = idx; });
     return cleaned.length ? cleaned : null;
   }
 
