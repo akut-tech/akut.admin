@@ -262,10 +262,18 @@ textarea { resize: vertical; }
 .char-counter { font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 42px; text-align: right; }
 .char-counter.char-counter-limit { color: var(--danger); font-weight: 600; }
 
-/* Translations */
-.trans-grid { display: grid; gap: 6px; }
-.trans-row { display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 8px; }
-.trans-lang { font-size: 12px; color: var(--muted); }
+/* Active-language translation control — one visible input at a time,
+   language dots show which languages already have content. */
+.field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lang-dots { display: flex; gap: 4px; flex-shrink: 0; }
+.lang-dot {
+  appearance: none; border: 1px solid var(--border); background: transparent;
+  color: var(--muted); border-radius: 999px; width: 26px; height: 22px;
+  font-size: 10px; font-weight: 700; letter-spacing: .2px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.lang-dot.has-content { border-color: var(--success); color: var(--success); }
+.lang-dot.is-active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 /* Diet chips */
 .chip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
@@ -343,6 +351,7 @@ textarea { resize: vertical; }
 }
 .badge-success { background: rgba(47, 191, 113, 0.15); color: var(--alert-success-text); border-color: rgba(47, 191, 113, 0.4); }
 .badge-danger { background: rgba(239, 83, 80, 0.15); color: var(--alert-error-text); border-color: rgba(239, 83, 80, 0.4); }
+.badge-sm { padding: 2px 8px; font-size: 11px; white-space: nowrap; }
 
 /* ---------- Status page ---------- */
 .status-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
@@ -382,6 +391,40 @@ textarea { resize: vertical; }
 .caret { color: var(--muted); font-size: 11px; }
 .accordion-actions { display: flex; gap: 6px; }
 .accordion-content { padding: 6px 14px 14px; border-top: 1px solid var(--border); }
+.accordion-title-wrap { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- Item rows (compact list; click opens the focused item editor panel) ---------- */
+.item-row-list { display: flex; flex-direction: column; gap: 4px; }
+.item-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface);
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.item-row:hover, .item-row:focus { border-color: var(--primary); outline: none; background: var(--surface-2); }
+.item-row-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.item-row-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-row-price { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+/* ---------- Item editor panel (focused single-item editing) ---------- */
+.modal-card-wide { max-width: 720px; max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.modal-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.modal-card-header h3 { margin: 0; font-size: 16px; }
+.modal-card-body { padding: 18px 22px; overflow-y: auto; flex: 1; min-height: 0; }
+.modal-actions-row {
+  flex-direction: row; justify-content: flex-end; gap: 10px;
+  padding: 14px 22px; border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.modal-actions-row .btn { width: auto; }
+
+/* ---------- Sticky editor action bar ---------- */
+.toolbar-sticky {
+  position: sticky; top: 0; z-index: 40;
+  background: var(--bg); padding: 12px 0; margin: -12px 0 16px;
+}
 
 .json-area {
   width: 100%; min-height: 420px; font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
