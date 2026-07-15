@@ -406,20 +406,6 @@ textarea { resize: vertical; }
 .item-row-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-row-price { color: var(--muted); font-size: 13px; white-space: nowrap; }
 
-/* ---------- Item editor panel (focused single-item editing) ---------- */
-.modal-card-wide { max-width: 720px; max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
-.modal-card-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 18px 22px; border-bottom: 1px solid var(--border); flex-shrink: 0;
-}
-.modal-card-header h3 { margin: 0; font-size: 16px; }
-.modal-card-body { padding: 18px 22px; overflow-y: auto; flex: 1; min-height: 0; }
-.modal-actions-row {
-  flex-direction: row; justify-content: flex-end; gap: 10px;
-  padding: 14px 22px; border-top: 1px solid var(--border); flex-shrink: 0;
-}
-.modal-actions-row .btn { width: auto; }
-
 /* ---------- Sticky editor action bar ---------- */
 .toolbar-sticky {
   position: sticky; top: 0; z-index: 40;
@@ -469,6 +455,46 @@ textarea { resize: vertical; }
 .modal-card h3 { font-size: 18px; margin-bottom: 10px; }
 .modal-card p { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
 .modal-actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- Item editor panel (focused single-item editing, full-screen) ----------
+   Comes after .modal-overlay/.modal-card above so it wins the cascade at equal
+   specificity. Sits below the shared .modal-overlay z-index (500) so AkutConfirm's
+   "discard changes?" prompt — triggered from inside this panel — always renders on top. */
+.modal-overlay-full { padding: 0; z-index: 480; }
+.modal-card-wide {
+  width: 100%; height: 100%; max-width: none; max-height: none;
+  display: flex; flex-direction: column; padding: 0; overflow: hidden;
+  border-radius: 0; border: none;
+}
+.modal-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.modal-card-header h3 { margin: 0; font-size: 16px; }
+.modal-card-body {
+  padding: 18px 22px; overflow-y: auto; flex: 1; min-height: 0;
+  max-width: 760px; width: 100%; margin: 0 auto;
+}
+.modal-actions-row {
+  flex-direction: row; justify-content: flex-end; gap: 10px;
+  padding: 14px 22px; border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.modal-actions-row .btn { width: auto; }
+
+/* Full-bleed edge-to-edge only makes sense on small screens. Above the app's
+   existing mobile breakpoint, show it as a large centered dialog instead —
+   dimmed backdrop, rounded corners, shadow — so it still reads as a modal
+   rather than a page navigation. */
+@media (min-width: 721px) {
+  .modal-overlay-full { padding: 40px; }
+  .modal-card-wide {
+    width: 100%; max-width: 900px;
+    height: auto; max-height: calc(100vh - 80px);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+}
 
 /* ---------- Theme toggle ---------- */
 .theme-toggle {

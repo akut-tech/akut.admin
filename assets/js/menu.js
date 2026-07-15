@@ -642,7 +642,6 @@
     closeItemEditor();
     ensureActiveLanguage();
     var isNew = !!opts.isNew;
-    var snapshot = JSON.parse(JSON.stringify(item));
 
     var bodyWrap = h("div", { class: "modal-card-body" });
 
@@ -673,6 +672,14 @@
 
     currentRerender = paintBody;
     paintBody();
+    // Field builders like youTubeField() normalize null-ish array fields to []
+    // as a side effect of first render — snapshot after that so the baseline
+    // matches what's actually on screen, not the pre-render shape.
+    var snapshot = JSON.parse(JSON.stringify(item));
+
+    function hasUnsavedChanges() {
+      return JSON.stringify(item) !== JSON.stringify(snapshot);
+    }
 
     function discard() {
       Object.keys(item).forEach(function (k) { delete item[k]; });
@@ -685,30 +692,38 @@
       renderContent();
     }
 
+    // The only two ways to leave the panel are Cancel and the header ✕ — no
+    // backdrop click, no Escape — and both must confirm before throwing away
+    // any edits already made (nothing to confirm if nothing changed).
+    function requestClose() {
+      if (!hasUnsavedChanges()) { discard(); return; }
+      window.AkutConfirm({
+        title:        t("menu.discardChangesTitle"),
+        message:      t("menu.discardChangesMessage"),
+        confirmLabel: t("menu.discardChangesConfirm"),
+        confirmClass: "btn-danger"
+      }).then(function (ok) { if (ok) discard(); });
+    }
+
     function commit() {
       closeItemEditor();
       renderContent();
     }
 
-    function onEsc(e) { if (e.key === "Escape") discard(); }
-
     var header = h("div", { class: "modal-card-header" }, [
       h("h3", null, [t("menu.itemN", { n: ii + 1 }) + nameHint(item.Name)]),
-      iconButton("✕", t("confirm.cancel"), discard)
+      iconButton("✕", t("confirm.cancel"), requestClose)
     ]);
     var footer = h("div", { class: "modal-actions modal-actions-row" }, [
-      h("button", { type: "button", class: "btn btn-ghost", onclick: discard }, [t("confirm.cancel")]),
+      h("button", { type: "button", class: "btn btn-ghost", onclick: requestClose }, [t("confirm.cancel")]),
       h("button", { type: "button", class: "btn btn-primary", onclick: commit }, [t("menu.done")])
     ]);
     var panelCard = h("div", { class: "modal-card modal-card-wide" }, [header, bodyWrap, footer]);
-    var overlay = h("div", { class: "modal-overlay" }, [panelCard]);
-    overlay.addEventListener("click", function (e) { if (e.target === overlay) discard(); });
-    document.addEventListener("keydown", onEsc);
+    var overlay = h("div", { class: "modal-overlay modal-overlay-full" }, [panelCard]);
     document.body.appendChild(overlay);
 
     itemPanel = {
       close: function () {
-        document.removeEventListener("keydown", onEsc);
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
         if (currentRerender === paintBody) currentRerender = renderContent;
       }
