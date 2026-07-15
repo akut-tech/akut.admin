@@ -262,10 +262,18 @@ textarea { resize: vertical; }
 .char-counter { font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 42px; text-align: right; }
 .char-counter.char-counter-limit { color: var(--danger); font-weight: 600; }
 
-/* Translations */
-.trans-grid { display: grid; gap: 6px; }
-.trans-row { display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 8px; }
-.trans-lang { font-size: 12px; color: var(--muted); }
+/* Active-language translation control — one visible input at a time,
+   language dots show which languages already have content. */
+.field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lang-dots { display: flex; gap: 4px; flex-shrink: 0; }
+.lang-dot {
+  appearance: none; border: 1px solid var(--border); background: transparent;
+  color: var(--muted); border-radius: 999px; width: 26px; height: 22px;
+  font-size: 10px; font-weight: 700; letter-spacing: .2px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.lang-dot.has-content { border-color: var(--success); color: var(--success); }
+.lang-dot.is-active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 /* Diet chips */
 .chip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
@@ -343,6 +351,7 @@ textarea { resize: vertical; }
 }
 .badge-success { background: rgba(47, 191, 113, 0.15); color: var(--alert-success-text); border-color: rgba(47, 191, 113, 0.4); }
 .badge-danger { background: rgba(239, 83, 80, 0.15); color: var(--alert-error-text); border-color: rgba(239, 83, 80, 0.4); }
+.badge-sm { padding: 2px 8px; font-size: 11px; white-space: nowrap; }
 
 /* ---------- Status page ---------- */
 .status-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
@@ -353,7 +362,7 @@ textarea { resize: vertical; }
   display: flex; align-items: flex-end; justify-content: space-between;
   gap: 16px; flex-wrap: wrap; margin-bottom: 16px;
 }
-.toolbar-group { display: flex; align-items: flex-end; gap: 10px; }
+.toolbar-group { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
 .toolbar select { width: auto; }
 .segmented { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
 .seg { background: var(--surface); color: var(--muted); border: none; padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
@@ -382,6 +391,35 @@ textarea { resize: vertical; }
 .caret { color: var(--muted); font-size: 11px; }
 .accordion-actions { display: flex; gap: 6px; }
 .accordion-content { padding: 6px 14px 14px; border-top: 1px solid var(--border); }
+.accordion-title-wrap { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- Item rows (compact list; click opens the focused item editor panel) ---------- */
+.item-row-list { display: flex; flex-direction: column; gap: 4px; }
+.item-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface);
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.item-row:hover, .item-row:focus { border-color: var(--primary); outline: none; background: var(--surface-2); }
+.item-row-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.item-row-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-row-price { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+/* ---------- Sticky editor action bar ----------
+   Sticky only above the mobile breakpoint: with this many buttons, a wrapped
+   toolbar can run to several rows on a phone-width screen, and pinning that
+   many rows permanently at the top would eat a large share of the viewport
+   for the whole editing session. Below 720px it scrolls away like normal
+   content instead — .toolbar-group wrapping (below) already keeps every
+   button visible with no clipping or horizontal scroll either way. */
+.toolbar-sticky {
+  position: sticky; top: 0; z-index: 40;
+  background: var(--bg); padding: 12px 0; margin: -12px 0 16px;
+}
+@media (max-width: 720px) {
+  .toolbar-sticky { position: static; padding: 0; margin: 0 0 16px; }
+}
 
 .json-area {
   width: 100%; min-height: 420px; font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
@@ -426,6 +464,46 @@ textarea { resize: vertical; }
 .modal-card h3 { font-size: 18px; margin-bottom: 10px; }
 .modal-card p { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
 .modal-actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- Item editor panel (focused single-item editing, full-screen) ----------
+   Comes after .modal-overlay/.modal-card above so it wins the cascade at equal
+   specificity. Sits below the shared .modal-overlay z-index (500) so AkutConfirm's
+   "discard changes?" prompt — triggered from inside this panel — always renders on top. */
+.modal-overlay-full { padding: 0; z-index: 480; }
+.modal-card-wide {
+  width: 100%; height: 100%; max-width: none; max-height: none;
+  display: flex; flex-direction: column; padding: 0; overflow: hidden;
+  border-radius: 0; border: none;
+}
+.modal-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.modal-card-header h3 { margin: 0; font-size: 16px; }
+.modal-card-body {
+  padding: 18px 22px; overflow-y: auto; flex: 1; min-height: 0;
+  max-width: 760px; width: 100%; margin: 0 auto;
+}
+.modal-actions-row {
+  flex-direction: row; justify-content: flex-end; gap: 10px;
+  padding: 14px 22px; border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.modal-actions-row .btn { width: auto; }
+
+/* Full-bleed edge-to-edge only makes sense on small screens. Above the app's
+   existing mobile breakpoint, show it as a large centered dialog instead —
+   dimmed backdrop, rounded corners, shadow — so it still reads as a modal
+   rather than a page navigation. */
+@media (min-width: 721px) {
+  .modal-overlay-full { padding: 40px; }
+  .modal-card-wide {
+    width: 100%; max-width: 900px;
+    height: auto; max-height: calc(100vh - 80px);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+  }
+}
 
 /* ---------- Theme toggle ---------- */
 .theme-toggle {

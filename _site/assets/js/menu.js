@@ -4,7 +4,12 @@
  *
  * Property casing is PascalCase to match the lambda's Newtonsoft (de)serialization.
  * Translations are objects keyed by Language *name* (e.g. "English"); other
- * enums are stored as their integer values. */
+ * enums are stored as their integer values.
+ *
+ * The editor is split into three top-level views: Settings (rarely-touched
+ * menu configuration), Content (menu name/description/logo + categories/items),
+ * and JSON (raw power-user editing). Items are edited one at a time in a
+ * focused panel rather than inline, to keep the category view scannable. */
 (function () {
   "use strict";
 
@@ -51,6 +56,13 @@
     FoundedYear: 1, Categories: 1, AvailabilityTime: 1
   };
 
+  // Menu-level fields that live on the Settings tab rather than Content —
+  // used by goToError to pick which tab to switch to.
+  var MENU_SETTINGS_FIELDS = {
+    TemplateId: 1, DefaultLanguage: 1, Currency: 1,
+    Notes: 1, FoundedYear: 1, AvailabilityTime: 1
+  };
+
   // TranslationsValidator reuses the same TRANSLATIONS_* codes for every
   // translated field, so the field can't be told apart from the code alone.
   // The English fieldName it was constructed with is always the message's
@@ -94,12 +106,24 @@
     menuId: null,   // null for a new (unsaved) menu
     status: "Disabled",
     menu: null,
-    view: "form"
+    view: "content"
   };
 
-  // Tracks which accordion IDs are open so renderForm() can restore them
-  var openCats  = {};
-  var openItems = {};
+  // Tracks which category accordion IDs are open so renderContent() can
+  // restore them across re-renders.
+  var openCats = {};
+
+  // The language whose input is currently shown by every translationsField
+  // on screen (see translationsField below). Global rather than per-field so
+  // switching language once updates every translated field consistently.
+  var activeLanguage = null;
+
+  // Whichever function currently redraws "the thing the language dots should
+  // affect" — the Content view, or an open item editor panel's body.
+  var currentRerender = null;
+
+  // The single open item editor panel, if any (see openItemEditor/closeItemEditor).
+  var itemPanel = null;
 
   var refs = {};
   document.addEventListener("DOMContentLoaded", function () {
@@ -107,7 +131,8 @@
     refs.statusSelect  = document.getElementById("statusSelect");
     refs.loadBtn       = document.getElementById("loadBtn");
     refs.newBtn        = document.getElementById("newEditorBtn");
-    refs.formTab       = document.getElementById("formTab");
+    refs.settingsTab   = document.getElementById("settingsTab");
+    refs.contentTab    = document.getElementById("contentTab");
     refs.jsonTab       = document.getElementById("jsonTab");
     refs.saveBtn       = document.getElementById("saveDraftBtn");
     refs.publishBtn    = document.getElementById("publishBtn");
@@ -130,7 +155,8 @@
     refs.saveBtn.addEventListener("click", function () { save(false); });
     refs.publishBtn.addEventListener("click", function () { save(true); });
     if (refs.previewBtn) refs.previewBtn.addEventListener("click", preview);
-    refs.formTab.addEventListener("click", function () { switchView("form"); });
+    refs.settingsTab.addEventListener("click", function () { switchView("settings"); });
+    refs.contentTab.addEventListener("click", function () { switchView("content"); });
     refs.jsonTab.addEventListener("click", function () { switchView("json"); });
     refs.jsonApply.addEventListener("click", applyJson);
     refs.backToListBtn.addEventListener("click", function () {
@@ -146,9 +172,9 @@
         state.menuId = menuId;
         state.status = status || "Active";
         state.menu   = null;
-        state.view   = "form";
-        openCats  = {};
-        openItems = {};
+        state.view   = "content";
+        openCats = {};
+        closeItemEditor();
         if (refs.statusSelect) refs.statusSelect.value = state.status;
         updateStatusButtons();
         load();
@@ -296,14 +322,17 @@
   }
 
   function goToError(target) {
-    if (state.view !== "form") switchView("form");
-    if (target.entity.kind === "item") {
-      openCats[target.entity.cat.Id] = true;
-      openItems[target.entity.item.Id] = true;
-    } else if (target.entity.kind === "category") {
+    // Deep-link to the language the error is about, so the (now single)
+    // visible translation input is the one that actually needs fixing.
+    if (target.language) activeLanguage = target.language;
+    if (target.entity.kind !== "menu") {
       openCats[target.entity.cat.Id] = true;
     }
-    renderForm();
+    var view = (target.entity.kind === "menu" && MENU_SETTINGS_FIELDS[target.field]) ? "settings" : "content";
+    switchView(view);
+    if (target.entity.kind === "item") {
+      openItemEditor(target.entity.cat, target.entity.item, target.entity.itemIndex);
+    }
     requestAnimationFrame(function () {
       var domId = target.entity.kind === "menu" ? MENU_ENTITY_ID
         : target.entity.kind === "category" ? target.entity.cat.Id
@@ -312,9 +341,9 @@
       var selector = '[data-entity-id="' + domId + '"][data-field="' + target.field + '"]';
       if (target.language) selector += '[data-language="' + target.language + '"]';
       if (isOrderedList && target.order != null) selector += '[data-order="' + target.order + '"]';
-      var el = refs.editorRoot.querySelector(selector);
+      var el = document.querySelector(selector);
       if (!el && isOrderedList) {
-        el = refs.editorRoot.querySelector('[data-entity-id="' + domId + '"][data-field="' + target.field + '"]');
+        el = document.querySelector('[data-entity-id="' + domId + '"][data-field="' + target.field + '"]');
       }
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -325,7 +354,7 @@
 
   function highlightField(el) {
     var wrapper = (el.classList.contains("image-editor") || el.classList.contains("video-row")) ? el
-      : el.closest(".trans-row") || el.closest(".field") || el;
+      : el.closest(".field") || el;
     wrapper.classList.add("field-flash");
     setTimeout(function () { wrapper.classList.remove("field-flash"); }, 2000);
   }
@@ -333,6 +362,7 @@
   // ---- Load / new ---------------------------------------------------------
   function load() {
     clearAlert();
+    closeItemEditor();
     showOnly("loading");
     AkutApi.getMenu(state.menuId)
       .then(function (menu) {
@@ -348,8 +378,11 @@
 
   function newMenu() {
     clearAlert();
+    closeItemEditor();
     state.menuId = null;
     state.status = "Disabled";
+    state.view = "content";
+    openCats = {};
     state.menu = {
       Logo: null,
       Name: {},
@@ -396,21 +429,25 @@
     refs.loadingState.hidden = which !== "loading";
     refs.emptyState.hidden   = which !== "empty";
     var hasEditor = which === "editor";
-    refs.editorRoot.hidden = !(hasEditor && state.view === "form");
+    refs.editorRoot.hidden = !(hasEditor && state.view !== "json");
     refs.jsonRoot.hidden   = !(hasEditor && state.view === "json");
   }
 
   // ---- View switching -----------------------------------------------------
   function switchView(view) {
     if (!state.menu) return;
+    closeItemEditor();
     state.view = view;
-    refs.formTab.classList.toggle("is-active", view === "form");
+    refs.settingsTab.classList.toggle("is-active", view === "settings");
+    refs.contentTab.classList.toggle("is-active", view === "content");
     refs.jsonTab.classList.toggle("is-active", view === "json");
     if (view === "json") {
       refs.jsonArea.value = JSON.stringify(sanitize(state.menu), null, 2);
       refs.jsonStatus.textContent = "";
+    } else if (view === "settings") {
+      renderSettings();
     } else {
-      renderForm();
+      renderContent();
     }
     showOnly("editor");
   }
@@ -418,8 +455,9 @@
   function applyJson() {
     try {
       var parsed = JSON.parse(refs.jsonArea.value);
+      closeItemEditor();
       state.menu = normalize(parsed);
-      switchView("form");
+      switchView("content");
     } catch (e) {
       refs.jsonStatus.textContent = t("menu.jsonInvalid", { msg: e.message });
       refs.jsonStatus.className = "field-saved field-error";
@@ -427,12 +465,13 @@
   }
 
   function render() {
-    if (state.view === "form") renderForm();
+    if (state.view === "settings") renderSettings();
+    else if (state.view === "content") renderContent();
     showOnly("editor");
   }
 
-  // ---- Form rendering -----------------------------------------------------
-  function renderForm() {
+  // ---- Form rendering: Settings tab ----------------------------------------
+  function renderSettings() {
     var m = state.menu;
     var root = refs.editorRoot;
     root.innerHTML = "";
@@ -459,9 +498,21 @@
       ]),
       availabilityTimeField(t("menu.availabilityTime"), m.AvailabilityTime, function (avail) {
         m.AvailabilityTime = avail;
-      }),
+      })
+    ]));
+  }
+
+  // ---- Form rendering: Content tab -----------------------------------------
+  function renderContent() {
+    var m = state.menu;
+    ensureActiveLanguage();
+    currentRerender = renderContent;
+    var root = refs.editorRoot;
+    root.innerHTML = "";
+
+    root.appendChild(card(t("menu.menuInfo"), [
       translationsField(t("menu.name"), m.Name, function (tr) { m.Name = tr; },
-        { maxLength: 100, entityId: MENU_ENTITY_ID, field: "Name" }),
+        { maxLength: 100, entityId: MENU_ENTITY_ID, field: "Name", required: true }),
       translationsField(t("menu.description"), m.Description || {}, function (tr) {
         m.Description = isEmptyTranslations(tr) ? null : tr;
       }, { maxLength: 500, entityId: MENU_ENTITY_ID, field: "Description" }),
@@ -471,8 +522,10 @@
 
     var catsWrap = h("div", Object.assign({ class: "section" }, fieldAttrs(MENU_ENTITY_ID, "Categories")), [
       sectionHeader(t("menu.categories"), t("menu.addCategory"), function () {
-        m.Categories.push(newCategory(m.Categories.length));
-        renderForm();
+        var cat = newCategory(m.Categories.length);
+        m.Categories.push(cat);
+        openCats[cat.Id] = true;
+        renderContent();
       })
     ]);
 
@@ -489,79 +542,196 @@
     var m = state.menu;
     var body = h("div", { class: "accordion-body" }, [
       translationsField(t("menu.name"), cat.Name, function (tr) { cat.Name = tr; },
-        { maxLength: 50, entityId: cat.Id, field: "Name" }),
+        { maxLength: 50, entityId: cat.Id, field: "Name", required: true }),
       translationsField(t("menu.description"), cat.Description || {}, function (tr) {
         cat.Description = isEmptyTranslations(tr) ? null : tr;
       }, { maxLength: 200, entityId: cat.Id, field: "Description" }),
       itemsBlock(cat, ci)
     ]);
 
+    var titleText = t("menu.categoryN", { n: ci + 1 }) + nameHint(cat.Name);
+    var issues = categoryIssues(cat);
+    var title = issues.length
+      ? h("span", { class: "accordion-title-wrap" }, [
+          titleText,
+          h("span", { class: "badge badge-danger badge-sm", title: issues.join(", ") }, ["⚠"])
+        ])
+      : titleText;
+
     return accordion(
-      t("menu.categoryN", { n: ci + 1 }) + nameHint(cat.Name),
+      title,
       [
-        iconButton("↑", t("menu.moveUp"), function () { move(m.Categories, ci, -1); renderForm(); }),
-        iconButton("↓", t("menu.moveDown"), function () { move(m.Categories, ci, 1); renderForm(); }),
-        iconButton("✕", t("menu.removeCategory"), function () {
-          if (confirm(t("menu.confirmRemoveCategory"))) { m.Categories.splice(ci, 1); renderForm(); }
+        iconButton("↑", t("menu.moveUp"), function (e) { e.stopPropagation(); move(m.Categories, ci, -1); renderContent(); }),
+        iconButton("↓", t("menu.moveDown"), function (e) { e.stopPropagation(); move(m.Categories, ci, 1); renderContent(); }),
+        iconButton("✕", t("menu.removeCategory"), function (e) {
+          e.stopPropagation();
+          if (confirm(t("menu.confirmRemoveCategory"))) { m.Categories.splice(ci, 1); renderContent(); }
         })
       ],
       body, false, cat.Id, openCats
     );
   }
 
+  function categoryIssues(cat) {
+    var issues = [];
+    if (isEmptyTranslations(cat.Name)) issues.push(t("menu.missingName"));
+    return issues;
+  }
+
+  function itemIssues(item) {
+    var issues = [];
+    if (isEmptyTranslations(item.Name)) issues.push(t("menu.missingName"));
+    return issues;
+  }
+
   function itemsBlock(cat, ci) {
     var wrap = h("div", { class: "subsection" }, [
       sectionHeader(t("menu.items"), t("menu.addItem"), function () {
-        cat.Items.push(newItem(cat.Items.length));
-        renderForm();
+        var item = newItem(cat.Items.length);
+        cat.Items.push(item);
+        renderContent();
+        openItemEditor(cat, item, cat.Items.length - 1, { isNew: true });
       }, true)
     ]);
     if (!cat.Items.length) {
       wrap.appendChild(h("p", { class: "muted pad" }, [t("menu.noItems")]));
     }
+    var list = h("div", { class: "item-row-list" });
     cat.Items.forEach(function (item, ii) {
-      wrap.appendChild(renderItem(cat, item, ii));
+      list.appendChild(itemRow(cat, item, ii));
     });
+    wrap.appendChild(list);
     return wrap;
   }
 
-  function renderItem(cat, item, ii) {
-    var body = h("div", { class: "accordion-body" }, [
-      grid2([
+  // Compact, scannable row for one item — click (or Enter/Space) opens the
+  // focused item editor panel instead of expanding an inline accordion.
+  function itemRow(cat, item, ii) {
+    var issues = itemIssues(item);
+    var nameText = firstTranslation(item.Name) || t("menu.untitledItem");
+    var row = h("div", { class: "item-row", tabindex: "0", role: "button" }, [
+      h("div", { class: "item-row-main" }, [
+        h("span", { class: "item-row-name" }, [nameText]),
+        h("span", { class: "item-row-price" }, [formatPrice(item.Price)]),
+        issues.length
+          ? h("span", { class: "badge badge-danger badge-sm", title: issues.join(", ") }, ["⚠ " + issues[0]])
+          : null
+      ]),
+      h("div", { class: "row-actions" }, [
+        iconButton("↑", t("menu.moveUp"), function (e) { e.stopPropagation(); move(cat.Items, ii, -1); renderContent(); }),
+        iconButton("↓", t("menu.moveDown"), function (e) { e.stopPropagation(); move(cat.Items, ii, 1); renderContent(); }),
+        iconButton("✕", t("menu.removeItem"), function (e) {
+          e.stopPropagation();
+          if (confirm(t("menu.confirmRemoveItem"))) { cat.Items.splice(ii, 1); renderContent(); }
+        })
+      ])
+    ]);
+    row.addEventListener("click", function () { openItemEditor(cat, item, ii); });
+    row.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openItemEditor(cat, item, ii); }
+    });
+    return row;
+  }
+
+  // ---- Focused item editor panel -------------------------------------------
+  // Fields mutate the item model live as the user types (see translationsField
+  // etc. below), so "Cancel" needs an explicit snapshot to restore from —
+  // there is no other undo mechanism.
+  function openItemEditor(cat, item, ii, opts) {
+    opts = opts || {};
+    closeItemEditor();
+    ensureActiveLanguage();
+    var isNew = !!opts.isNew;
+
+    var bodyWrap = h("div", { class: "modal-card-body" });
+
+    function paintBody() {
+      bodyWrap.innerHTML = "";
+      bodyWrap.appendChild(grid2([
         priceField(t("menu.price"), item.Price, function (v) { item.Price = floatOr(v, 0); },
           { entityId: item.Id, field: "Price" }),
-        null
-      ]),
-      tagField(t("menu.tag"), item.Tag, function (v) { item.Tag = v; }, { entityId: item.Id, field: "Tag" }),
-      translationsField(t("menu.name"), item.Name, function (tr) { item.Name = tr; },
-        { maxLength: 50, entityId: item.Id, field: "Name" }),
-      translationsField(t("menu.shortDesc"), item.ShortDescription || {}, function (tr) {
+        tagField(t("menu.tag"), item.Tag, function (v) { item.Tag = v; }, { entityId: item.Id, field: "Tag" })
+      ]));
+      bodyWrap.appendChild(translationsField(t("menu.name"), item.Name, function (tr) { item.Name = tr; },
+        { maxLength: 50, entityId: item.Id, field: "Name", required: true }));
+      bodyWrap.appendChild(translationsField(t("menu.shortDesc"), item.ShortDescription || {}, function (tr) {
         item.ShortDescription = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 100, entityId: item.Id, field: "ShortDescription" }),
-      translationsField(t("menu.fullDesc"), item.FullDescription || {}, function (tr) {
+      }, { maxLength: 100, entityId: item.Id, field: "ShortDescription" }));
+      bodyWrap.appendChild(translationsField(t("menu.fullDesc"), item.FullDescription || {}, function (tr) {
         item.FullDescription = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 800, entityId: item.Id, field: "FullDescription" }),
-      translationsField(t("menu.ingredients"), item.Ingredients || {}, function (tr) {
+      }, { maxLength: 800, entityId: item.Id, field: "FullDescription" }));
+      bodyWrap.appendChild(translationsField(t("menu.ingredients"), item.Ingredients || {}, function (tr) {
         item.Ingredients = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 200, entityId: item.Id, field: "Ingredients" }),
-      allergensField(item),
-      dietsField(item),
-      availabilityField(item),
-      youTubeField(item),
-      imagesField(item)
-    ]);
+      }, { maxLength: 200, entityId: item.Id, field: "Ingredients" }));
+      bodyWrap.appendChild(allergensField(item));
+      bodyWrap.appendChild(dietsField(item));
+      bodyWrap.appendChild(availabilityField(item));
+      bodyWrap.appendChild(youTubeField(item));
+      bodyWrap.appendChild(imagesField(item));
+    }
 
-    return accordion(
-      t("menu.itemN", { n: ii + 1 }) + nameHint(item.Name),
-      [
-        iconButton("↑", t("menu.moveUp"), function () { move(cat.Items, ii, -1); renderForm(); }),
-        iconButton("↓", t("menu.moveDown"), function () { move(cat.Items, ii, 1); renderForm(); }),
-        iconButton("✕", t("menu.removeItem"), function () {
-          if (confirm(t("menu.confirmRemoveItem"))) { cat.Items.splice(ii, 1); renderForm(); }
-        })
-      ],
-      body, true, item.Id, openItems
-    );
+    currentRerender = paintBody;
+    paintBody();
+    // Field builders like youTubeField() normalize null-ish array fields to []
+    // as a side effect of first render — snapshot after that so the baseline
+    // matches what's actually on screen, not the pre-render shape.
+    var snapshot = JSON.parse(JSON.stringify(item));
+
+    function hasUnsavedChanges() {
+      return JSON.stringify(item) !== JSON.stringify(snapshot);
+    }
+
+    function discard() {
+      Object.keys(item).forEach(function (k) { delete item[k]; });
+      Object.assign(item, snapshot);
+      if (isNew) {
+        var idx = cat.Items.indexOf(item);
+        if (idx !== -1) cat.Items.splice(idx, 1);
+      }
+      closeItemEditor();
+      renderContent();
+    }
+
+    // The only two ways to leave the panel are Cancel and the header ✕ — no
+    // backdrop click, no Escape — and both must confirm before throwing away
+    // any edits already made (nothing to confirm if nothing changed).
+    function requestClose() {
+      if (!hasUnsavedChanges()) { discard(); return; }
+      window.AkutConfirm({
+        title:        t("menu.discardChangesTitle"),
+        message:      t("menu.discardChangesMessage"),
+        confirmLabel: t("menu.discardChangesConfirm"),
+        confirmClass: "btn-danger"
+      }).then(function (ok) { if (ok) discard(); });
+    }
+
+    function commit() {
+      closeItemEditor();
+      renderContent();
+    }
+
+    var header = h("div", { class: "modal-card-header" }, [
+      h("h3", null, [t("menu.itemN", { n: ii + 1 }) + nameHint(item.Name)]),
+      iconButton("✕", t("confirm.cancel"), requestClose)
+    ]);
+    var footer = h("div", { class: "modal-actions modal-actions-row" }, [
+      h("button", { type: "button", class: "btn btn-ghost", onclick: requestClose }, [t("confirm.cancel")]),
+      h("button", { type: "button", class: "btn btn-primary", onclick: commit }, [t("menu.done")])
+    ]);
+    var panelCard = h("div", { class: "modal-card modal-card-wide" }, [header, bodyWrap, footer]);
+    var overlay = h("div", { class: "modal-overlay modal-overlay-full" }, [panelCard]);
+    document.body.appendChild(overlay);
+
+    itemPanel = {
+      close: function () {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        if (currentRerender === paintBody) currentRerender = renderContent;
+      }
+    };
+  }
+
+  function closeItemEditor() {
+    if (itemPanel) { itemPanel.close(); itemPanel = null; }
   }
 
   // ---- Field builders -----------------------------------------------------
@@ -675,34 +845,55 @@
     return field(label, select);
   }
 
+  // Active-language translation control: one visible input for the current
+  // `activeLanguage`, plus a row of small language dots that switch it and
+  // show (via the "has-content" class) which languages already have text.
+  // Switching language re-renders whatever `currentRerender` points at
+  // (Content view or an open item panel); typing does not, to avoid losing
+  // focus on every keystroke — dots are updated in place instead.
   function translationsField(label, trans, onChange, opts) {
     opts = opts || {};
     var maxLength = opts.maxLength;
     var current = Object.assign({}, trans || {});
-    var inputs = LANGUAGES.map(function (lang) {
-      var counter = maxLength
-        ? h("span", { class: "char-counter" }, [counterText(current[lang.name], maxLength)])
-        : null;
-      var input = h("input", Object.assign({
-        type: "text", value: current[lang.name] || "",
-        placeholder: lang.name + "…",
-        maxlength: maxLength || null,
-        oninput: function (e) {
-          var v = e.target.value;
-          if (v) current[lang.name] = v; else delete current[lang.name];
-          updateCounter(counter, v, maxLength);
-          onChange(current);
-        }
-      }, fieldAttrs(opts.entityId, opts.field, lang.name)));
-      return h("div", { class: "trans-row" }, [
-        h("span", { class: "trans-lang" }, [lang.name]),
-        input,
-        counter
-      ]);
-    });
+    var lang = LANGUAGES.filter(function (l) { return l.name === activeLanguage; })[0] || LANGUAGES[0];
+    var dotEls = {};
+
+    var counter = maxLength
+      ? h("span", { class: "char-counter" }, [counterText(current[lang.name], maxLength)])
+      : null;
+    var input = h("input", Object.assign({
+      type: "text", value: current[lang.name] || "",
+      placeholder: lang.name + "…",
+      maxlength: maxLength || null,
+      oninput: function (e) {
+        var v = e.target.value;
+        if (v) current[lang.name] = v; else delete current[lang.name];
+        updateCounter(counter, v, maxLength);
+        onChange(current);
+        var dotEl = dotEls[lang.name];
+        if (dotEl) dotEl.classList.toggle("has-content", !!v);
+      }
+    }, fieldAttrs(opts.entityId, opts.field, lang.name)));
+
+    var dots = h("div", { class: "lang-dots" }, LANGUAGES.map(function (l) {
+      var hasContent = !!current[l.name];
+      var btn = h("button", {
+        type: "button",
+        class: "lang-dot" + (l.name === lang.name ? " is-active" : "") + (hasContent ? " has-content" : ""),
+        title: l.name,
+        onclick: function () { activeLanguage = l.name; if (currentRerender) currentRerender(); }
+      }, [l.name.slice(0, 2).toUpperCase()]);
+      dotEls[l.name] = btn;
+      return btn;
+    }));
+
+    var row = h("div", { class: "field-input-row" }, [input, counter]);
     return h("div", { class: "field" }, [
-      h("span", { class: "field-label" }, [label]),
-      h("div", { class: "trans-grid" }, inputs)
+      h("div", { class: "field-label-row" }, [
+        h("span", { class: "field-label" }, [label + (opts.required ? " *" : "")]),
+        dots
+      ]),
+      row
     ]);
   }
 
@@ -714,6 +905,12 @@
     if (!counter) return;
     counter.textContent = counterText(value, maxLength);
     counter.classList.toggle("char-counter-limit", (value ? value.length : 0) >= maxLength);
+  }
+
+  function ensureActiveLanguage() {
+    if (activeLanguage && LANGUAGES.some(function (l) { return l.name === activeLanguage; })) return;
+    var m = state.menu;
+    activeLanguage = (m && E.language[m.DefaultLanguage]) || (LANGUAGES[0] && LANGUAGES[0].name) || null;
   }
 
   function availabilityTimeField(label, avail, onChange) {
@@ -1042,10 +1239,20 @@
     };
   }
 
-  function nameHint(trans) {
+  function firstTranslation(trans) {
     if (!trans) return "";
     var first = Object.keys(trans)[0];
-    return first ? " — " + trans[first] : "";
+    return first ? trans[first] : "";
+  }
+
+  function nameHint(trans) {
+    var v = firstTranslation(trans);
+    return v ? " — " + v : "";
+  }
+
+  function formatPrice(v) {
+    var n = Number(v);
+    return isNaN(n) ? "0.00" : n.toFixed(2);
   }
 
   function move(arr, i, dir) {

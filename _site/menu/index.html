@@ -119,7 +119,7 @@
 
 <!-- ── Editor view (hidden until a menu is selected) ───────────── -->
 <div id="editorView" hidden>
-  <div class="toolbar">
+  <div class="toolbar toolbar-sticky">
     <div class="toolbar-group">
       <button type="button" class="btn btn-ghost btn-sm" id="backToListBtn" data-i18n="menu.backToList">← Menus</button>
       <label class="field-inline">
@@ -135,7 +135,8 @@
     </div>
     <div class="toolbar-group">
       <div class="segmented">
-        <button type="button" class="seg is-active" id="formTab" data-i18n="menu.form">Form</button>
+        <button type="button" class="seg" id="settingsTab" data-i18n="menu.settingsTab">Settings</button>
+        <button type="button" class="seg is-active" id="contentTab" data-i18n="menu.contentTab">Content</button>
         <button type="button" class="seg" id="jsonTab" data-i18n="menu.json">JSON</button>
       </div>
       <button type="button" class="btn btn-secondary" id="saveDraftBtn" data-i18n="menu.saveDraft">Save</button>
