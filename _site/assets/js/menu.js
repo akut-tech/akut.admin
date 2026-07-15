@@ -488,14 +488,11 @@
       grid2([
         selectField(t("menu.currency"), m.Currency, E.currency, function (v) { m.Currency = Number(v); },
           { entityId: MENU_ENTITY_ID, field: "Currency" }),
-        textField(t("menu.notes"), m.Notes || "", function (v) { m.Notes = v || null; },
-          { maxLength: 1000, entityId: MENU_ENTITY_ID, field: "Notes" })
-      ]),
-      grid2([
         foundedYearField(t("menu.foundedYear"), m.FoundedYear, function (v) { m.FoundedYear = v; },
-          { entityId: MENU_ENTITY_ID, field: "FoundedYear" }),
-        null
+          { entityId: MENU_ENTITY_ID, field: "FoundedYear" })
       ]),
+      textField(t("menu.notes"), m.Notes || "", function (v) { m.Notes = v || null; },
+        { maxLength: 1000, entityId: MENU_ENTITY_ID, field: "Notes", multiline: true, rows: 4 }),
       availabilityTimeField(t("menu.availabilityTime"), m.AvailabilityTime, function (avail) {
         m.AvailabilityTime = avail;
       })
@@ -515,7 +512,7 @@
         { maxLength: 100, entityId: MENU_ENTITY_ID, field: "Name", required: true }),
       translationsField(t("menu.description"), m.Description || {}, function (tr) {
         m.Description = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 500, entityId: MENU_ENTITY_ID, field: "Description" }),
+      }, { maxLength: 500, entityId: MENU_ENTITY_ID, field: "Description", multiline: true, rows: 4 }),
       imageField(t("menu.logo"), m.Logo, function (img) { m.Logo = img; },
         { entityId: MENU_ENTITY_ID, field: "Image" })
     ]));
@@ -545,7 +542,7 @@
         { maxLength: 50, entityId: cat.Id, field: "Name", required: true }),
       translationsField(t("menu.description"), cat.Description || {}, function (tr) {
         cat.Description = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 200, entityId: cat.Id, field: "Description" }),
+      }, { maxLength: 200, entityId: cat.Id, field: "Description", multiline: true, rows: 3 }),
       itemsBlock(cat, ci)
     ]);
 
@@ -656,13 +653,13 @@
         { maxLength: 50, entityId: item.Id, field: "Name", required: true }));
       bodyWrap.appendChild(translationsField(t("menu.shortDesc"), item.ShortDescription || {}, function (tr) {
         item.ShortDescription = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 100, entityId: item.Id, field: "ShortDescription" }));
+      }, { maxLength: 100, entityId: item.Id, field: "ShortDescription", multiline: true, rows: 2 }));
       bodyWrap.appendChild(translationsField(t("menu.fullDesc"), item.FullDescription || {}, function (tr) {
         item.FullDescription = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 800, entityId: item.Id, field: "FullDescription" }));
+      }, { maxLength: 800, entityId: item.Id, field: "FullDescription", multiline: true, rows: 6 }));
       bodyWrap.appendChild(translationsField(t("menu.ingredients"), item.Ingredients || {}, function (tr) {
         item.Ingredients = isEmptyTranslations(tr) ? null : tr;
-      }, { maxLength: 200, entityId: item.Id, field: "Ingredients" }));
+      }, { maxLength: 200, entityId: item.Id, field: "Ingredients", multiline: true, rows: 3 }));
       bodyWrap.appendChild(allergensField(item));
       bodyWrap.appendChild(dietsField(item));
       bodyWrap.appendChild(availabilityField(item));
@@ -755,14 +752,21 @@
     opts = opts || {};
     var maxLength = opts.maxLength;
     var counter = maxLength ? h("span", { class: "char-counter" }, [counterText(value, maxLength)]) : null;
-    var input = h("input", Object.assign({
-      type: "text", value: value || "", placeholder: opts.placeholder || "",
+    var fieldProps = Object.assign({
+      placeholder: opts.placeholder || "",
       maxlength: maxLength || null,
       oninput: function (e) {
         onChange(e.target.value);
         updateCounter(counter, e.target.value, maxLength);
       }
-    }, fieldAttrs(opts.entityId, opts.field)));
+    }, fieldAttrs(opts.entityId, opts.field));
+    var input;
+    if (opts.multiline) {
+      input = h("textarea", Object.assign({ rows: opts.rows || 3 }, fieldProps));
+      input.value = value || "";
+    } else {
+      input = h("input", Object.assign({ type: "text", value: value || "" }, fieldProps));
+    }
     var control = counter ? h("div", { class: "field-input-row" }, [input, counter]) : input;
     return field(label + (opts.required ? " *" : ""), control, opts.help);
   }
@@ -861,8 +865,7 @@
     var counter = maxLength
       ? h("span", { class: "char-counter" }, [counterText(current[lang.name], maxLength)])
       : null;
-    var input = h("input", Object.assign({
-      type: "text", value: current[lang.name] || "",
+    var inputProps = Object.assign({
       placeholder: lang.name + "…",
       maxlength: maxLength || null,
       oninput: function (e) {
@@ -873,7 +876,14 @@
         var dotEl = dotEls[lang.name];
         if (dotEl) dotEl.classList.toggle("has-content", !!v);
       }
-    }, fieldAttrs(opts.entityId, opts.field, lang.name)));
+    }, fieldAttrs(opts.entityId, opts.field, lang.name));
+    var input;
+    if (opts.multiline) {
+      input = h("textarea", Object.assign({ rows: opts.rows || 3 }, inputProps));
+      input.value = current[lang.name] || "";
+    } else {
+      input = h("input", Object.assign({ type: "text", value: current[lang.name] || "" }, inputProps));
+    }
 
     var dots = h("div", { class: "lang-dots" }, LANGUAGES.map(function (l) {
       var hasContent = !!current[l.name];
