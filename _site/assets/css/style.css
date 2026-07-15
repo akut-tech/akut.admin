@@ -362,7 +362,7 @@ textarea { resize: vertical; }
   display: flex; align-items: flex-end; justify-content: space-between;
   gap: 16px; flex-wrap: wrap; margin-bottom: 16px;
 }
-.toolbar-group { display: flex; align-items: flex-end; gap: 10px; }
+.toolbar-group { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
 .toolbar select { width: auto; }
 .segmented { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
 .seg { background: var(--surface); color: var(--muted); border: none; padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
@@ -406,10 +406,19 @@ textarea { resize: vertical; }
 .item-row-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item-row-price { color: var(--muted); font-size: 13px; white-space: nowrap; }
 
-/* ---------- Sticky editor action bar ---------- */
+/* ---------- Sticky editor action bar ----------
+   Sticky only above the mobile breakpoint: with this many buttons, a wrapped
+   toolbar can run to several rows on a phone-width screen, and pinning that
+   many rows permanently at the top would eat a large share of the viewport
+   for the whole editing session. Below 720px it scrolls away like normal
+   content instead — .toolbar-group wrapping (below) already keeps every
+   button visible with no clipping or horizontal scroll either way. */
 .toolbar-sticky {
   position: sticky; top: 0; z-index: 40;
   background: var(--bg); padding: 12px 0; margin: -12px 0 16px;
+}
+@media (max-width: 720px) {
+  .toolbar-sticky { position: static; padding: 0; margin: 0 0 16px; }
 }
 
 .json-area {
