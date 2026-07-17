@@ -1193,7 +1193,9 @@
         }),
         h("select", {
           onchange: function (e) { img.Source = Number(e.target.value); onChange(); }
-        }, Object.keys(E.imageSource).map(function (k) {
+        }, Object.keys(E.imageSource).filter(function (k) {
+          return E.imageSource[k] !== "AkutGallery";
+        }).map(function (k) {
           return h("option", { value: k, selected: Number(k) === Number(img.Source) },
             [E.imageSource[k]]);
         }))
