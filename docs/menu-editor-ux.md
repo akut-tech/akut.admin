@@ -52,7 +52,7 @@ surface **inline validation + completeness badges**.
 | **Category** (`menu.js:488-510`) | Name (translations, ≤50), Description (translations, ≤200), Items[] |
 | **Item / dish** (`menu.js:528-565`) | Price, Tag, Name (≤50), ShortDescription (≤100), FullDescription (≤800), Ingredients (≤200) — all translations — Allergens (14 chips), Diets (17 chips), Availability (unavailable + 7 day chips), YouTubeVideoUrls (list), Images (list) |
 
-Translatable languages: **Portuguese, English, Spanish, French** (`assets/js/config.js:23`).
+Translatable languages: **Portuguese, English, Spanish, French, Italian** (`assets/js/config.js:23`).
 
 ### 2.3 Issues identified
 
