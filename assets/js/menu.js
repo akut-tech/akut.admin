@@ -892,7 +892,7 @@
         class: "lang-dot" + (l.name === lang.name ? " is-active" : "") + (hasContent ? " has-content" : ""),
         title: l.name,
         onclick: function () { activeLanguage = l.name; if (currentRerender) currentRerender(); }
-      }, [l.name.slice(0, 2).toUpperCase()]);
+      }, [l.name === "Portuguese" ? "PT" : l.name.slice(0, 2).toUpperCase()]);
       dotEls[l.name] = btn;
       return btn;
     }));
