@@ -18,7 +18,7 @@
     return { value: Number(k), name: E.language[k] };
   });
 
-  var TEMPLATE_PRESETS = ["default", "classic", "deepblue", "senjutsu", "lisbon", "trattoria", "brunch", "coffee"];
+  var TEMPLATE_PRESETS = ["default", "classic", "deepblue", "senjutsu", "lisbon", "trattoria", "brunch", "coffee", "brasserie"];
 
   // Sentinel data-entity-id used for menu-level fields, since a brand-new
   // (never-saved) menu has no server-assigned Id yet to key off of — there is
