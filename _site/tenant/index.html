@@ -113,6 +113,19 @@
 </section>
 
 <section class="card" id="tenantCard">
+  <div id="tenantSwitchBlock" hidden>
+    <label class="field">
+      <span class="field-label" data-i18n="tenant.switchTenant.label">Active tenant</span>
+      <p class="field-help" data-i18n-html="tenant.switchTenant.help">Choose which tenant this page's actions apply to.</p>
+      <div class="inline-controls">
+        <select id="tenantSwitchSelect"></select>
+        <button type="button" class="btn btn-secondary" id="tenantSwitchSave" data-i18n="tenant.switchTenant.save">Switch</button>
+      </div>
+      <span class="field-saved" id="tenantSwitchSaved" hidden data-i18n="tenant.switchTenant.saved">Switched ✓</span>
+    </label>
+    <hr class="divider">
+  </div>
+
   <div class="status-row">
     <div>
       <h2 data-i18n="tenant.status">Tenant status</h2>

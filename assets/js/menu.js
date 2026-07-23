@@ -1010,7 +1010,7 @@
             }
           }
         }),
-        h("span", null, [E.foodDietType[k]])
+        h("span", null, [t("menu.diet." + k)])
       ]);
     });
     return h("div", Object.assign({ class: "field" }, fieldAttrs(item.Id, "Diets")), [
